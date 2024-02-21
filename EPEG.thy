@@ -89,8 +89,8 @@ where
   Not_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Not e) Succ0" |
   Not_f: "succeeds \<Gamma> e \<Longrightarrow> hook \<Gamma> (Not e) Fail" |
   Seq_0: "hook \<Gamma> e1 Succ0 \<Longrightarrow> hook \<Gamma> e2 Succ0 \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Succ0" |
-  Seq_1_first: "succeeds \<Gamma> e \<Longrightarrow> hook \<Gamma> e2 Succ1 \<Longrightarrow> hook \<Gamma> (Seq eSucc1 e2) Succ1" |
-  Seq_1_second: "hook \<Gamma> e1 Succ1 \<Longrightarrow> succeeds \<Gamma> e2 \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Succ1" |
+  Seq_1_first: "hook \<Gamma> e1 Succ1 \<Longrightarrow> succeeds \<Gamma> e2 \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Succ1" |
+  Seq_1_second: "succeeds \<Gamma> e1 \<Longrightarrow> hook \<Gamma> e2 Succ1 \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Succ1" |
   Seq_f_first: "hook \<Gamma> e1 Fail \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Fail" |
   Seq_f_second: "succeeds \<Gamma> e1 \<Longrightarrow> hook \<Gamma> e2 Fail \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Fail" |
   Choice_Succ0: "hook \<Gamma> e1 Succ0 \<Longrightarrow> hook \<Gamma> (Choice e1 e2) Succ0" |
