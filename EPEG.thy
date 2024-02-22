@@ -120,8 +120,8 @@ code_pred succeeds.
 
 inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow> string option \<Rightarrow> (nonterm \<times> expr) list \<Rightarrow> bool" where
   Term_s: "step (Term a) (a # x) \<Gamma> (Some [a]) (production \<Gamma>)" |
-  Term_f_neq: "a \<noteq> b \<Longrightarrow> step (Term a) (b # x) \<Gamma> None (production \<Gamma>)" |
-  Term_f_empty: "step (Term a) [] \<Gamma> None (production \<Gamma>)" |
+  Term_f_neq: "a \<noteq> b \<Longrightarrow> step (Term a) (b # x) \<Gamma> None (production \<Gamma>)" | 
+  Term_f_empty: "step (Term _) [] \<Gamma> None (production \<Gamma>)" |
   Nonterm: "lookup \<Gamma> A = e \<Longrightarrow> step e x \<Gamma> out R \<Longrightarrow> step (Nonterm A) x \<Gamma> out R" |
   Empty: "step Empty x \<Gamma> (Some []) (production \<Gamma>)" |
   Seq_s: "step e1 (x1 @ x2 @ y) \<Gamma> (Some x1) R1 \<Longrightarrow>
@@ -140,7 +140,7 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
              step (Choice e1 e2) x \<Gamma> None (production \<Gamma>)" |
   Not_s: "step e x \<Gamma> None R \<Longrightarrow> step (Not e) x \<Gamma> (Some []) (production \<Gamma>)" |
   Not_f: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow> step (Not e) (x @ y) \<Gamma> None (production \<Gamma>)" |
-  Star_base: "step e x \<Gamma> None R \<Longrightarrow> step (Star e) x \<Gamma> (Some []) (production \<Gamma>)" |
+  Star_base: "step e x \<Gamma> None R \<Longrightarrow> step (Star e) x \<Gamma> (Some []) (production \<Gamma>)" | 
   Star_ind: "step e (x1 @ x2 @ y) \<Gamma> (Some x1) R1 \<Longrightarrow>
              step (Star e) (x2 @ y) (\<Gamma>\<lparr>production := R1\<rparr>) (Some x2) R2 \<Longrightarrow>
              step (Star e) (x1 @ x2 @ y) \<Gamma> (Some (x1 @ x2)) R2" |
@@ -152,7 +152,8 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
   Mod_s_cons: "step e (x@y) \<Gamma> (Some x) R
             \<Longrightarrow> elim \<Gamma> ei ei'
             \<Longrightarrow> step (Mu e ((n,ei)#us)) (x@y) \<Gamma> (Some x) ((n,ei')#R)" | 
-  Mod_f : "step e x \<Gamma> None R \<Longrightarrow> step (mu e p) x \<Gamma> None (production \<Gamma>)"
+  Mod_f : "step e x \<Gamma> None R \<Longrightarrow> step (Mu e p) x \<Gamma> None (production \<Gamma>)"
 
+code_pred step.
 
 end
