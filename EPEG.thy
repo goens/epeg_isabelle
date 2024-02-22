@@ -111,6 +111,7 @@ where
   Bind_update_1: "(List.member  (expressionSet \<Gamma>) (Delta e i)) \<Longrightarrow> hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ1" | 
   Bind_update_f: "(List.member (expressionSet \<Gamma>) (Delta e i)) \<Longrightarrow> hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Nonterm i) Fail" | 
   Bind_update_0: "(List.member (expressionSet \<Gamma>) (Delta e i)) \<Longrightarrow> hook \<Gamma> e Succ0 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ0" | 
+  NuAnythingGoes : "hook \<Gamma> (Nu n) out" |
   WithoutConsuming: "hook \<Gamma> e Succ0 \<Longrightarrow> succeeds \<Gamma> e" |
   WithConsuming: "hook \<Gamma> e Succ1 \<Longrightarrow> succeeds \<Gamma> e"
 
