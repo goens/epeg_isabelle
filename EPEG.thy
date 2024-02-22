@@ -38,6 +38,11 @@ fun lookup :: "EPEG \<Rightarrow> nonterm \<Rightarrow> expr" where
 fun nontermToExpr :: " nonterm \<Rightarrow> expr" where
  "nontermToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
 
+(*These two are fundamentally the same function, just repeated for the type synonyms
+ as semantic intent annotations *)
+fun termListToExpr :: "char list \<Rightarrow> expr" where
+ "termListToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
+
 inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" where
   Empty: "elim \<Gamma> Empty Empty" |
   Term: "elim \<Gamma> (Term a) (Term a)" |
@@ -138,15 +143,14 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
   Star_ind: "step e (x1 @ x2 @ y) \<Gamma> (Some x1) R1 \<Longrightarrow>
              step (Star e) (x2 @ y) (\<Gamma>\<lparr>production := R1\<rparr>) (Some x2) R2 \<Longrightarrow>
              step (Star e) (x1 @ x2 @ y) \<Gamma> (Some (x1 @ x2)) R2" |
-  (*Bind_s: "step e (x @ y) \<Gamma> (Some x) R1 \<Longrightarrow>
-           step (Delta e i) (x @ y) \<Gamma> (Some x) (s, expr.Choice (All (map x expr.Term)) (lookup R1 i))#R1" |*)
+  Bind_s: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow>
+           step (Delta e i) (x @ y) \<Gamma> (Some x) ((i,termListToExpr x)#R)" |
   Bind_f: "s step e x \<Gamma> None R \<Longrightarrow> step (Delta e i) x \<Gamma> None (production \<Gamma>)" |
-  (*
-   Mod_s: "step e (x@y) \<Gamma> (Some x) R₁
-            (* u is the original update list, and v is the one with \<gamma> and \<nu> removed.*)
-            (* still not entirely translated from Lean: \<Longrightarrow> \<forall> uv \<in> u.zip v, (uv.fst.fst = uv.snd.fst \<and> elimRefs uv.fst.snd = uv.fst.snd) *)
-            \<Longrightarrow> step (Mu e u) (x@y) \<Gamma> (Some x) (v@R)
-   *)
+  Mod_s_nil: "step e (x@y) \<Gamma> (Some x) R
+            \<Longrightarrow> step (Mu e Nil) (x@y) \<Gamma> (Some x) R" |
+  Mod_s_cons: "step e (x@y) \<Gamma> (Some x) R
+            \<Longrightarrow> elim \<Gamma> ei ei'
+            \<Longrightarrow> step (Mu e ((n,ei)#us)) (x@y) \<Gamma> (Some x) ((n,ei')#R)" |
   Mod_f : "step e x \<Gamma> None R \<Longrightarrow> step (mu e p) x \<Gamma> None (production \<Gamma>)"
 
 
