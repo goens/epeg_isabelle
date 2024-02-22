@@ -35,6 +35,9 @@ fun lookup :: "EPEG \<Rightarrow> nonterm \<Rightarrow> expr" where
         None \<Rightarrow> Empty
       | Some p \<Rightarrow> snd p)"
 
+fun nontermToExpr :: " nonterm \<Rightarrow> expr" where
+ "nontermToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
+
 inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" where
   Empty: "elim \<Gamma> Empty Empty" |
   Term: "elim \<Gamma> (Term a) (Term a)" |
@@ -45,7 +48,7 @@ inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool
   Star: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Star e) (Star e')" |
   Delta: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Delta e A) (Delta e' A)" |
   Elim1: "lookup \<Gamma> n = e \<Longrightarrow> elim \<Gamma> (Gamma n) e" |
-  Elim2: "lookup \<Gamma> n = Nonterm A \<Longrightarrow> elim \<Gamma> (Nu n) (Nonterm A)" |
+  Elim2: "lookup \<Gamma> n = nontermToExpr A \<Longrightarrow> elim \<Gamma> (Nu n) (Nonterm A)" |
   Mut_Nil : "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Mu e Nil) (Mu e' Nil)" |
   Mut_Cons : "elim \<Gamma> (Nonterm ni) (Nonterm ni') \<Longrightarrow> 
               elim \<Gamma> ei ei' \<Longrightarrow> elim \<Gamma> (Mu e P) (Mu e' P') \<Longrightarrow>
