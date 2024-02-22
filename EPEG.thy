@@ -156,4 +156,52 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
 
 code_pred step.
 
+(* Lemma 5.8 *)
+lemma assumes hStep : "step e i \<Gamma> res R"
+      (*Note that `=` is equivalence of propositions (bool) in Isabelle/HOL*)
+      shows "hook \<Gamma> e' out = hook (\<Gamma> \<lparr> production := R\<rparr>) e' out" 
+
+proof
+  (induction e' rule : expr.induct)
+  case Empty 
+  show ?case 
+     proof (cases out)
+       case Succ0 
+       then show ?thesis
+       by (simp add: hook_succeeds.Empty) 
+   next
+     case Succ1
+     from hStep show ?thesis
+       (* proof cases *) 
+       (*there's  a contradiction here, both sides are always false by case analysis*)
+       sorry
+   next
+     case Fail
+     from hStep show ?thesis
+       sorry
+   qed
+next
+  case Term
+  from hStep show ?case
+  proof (cases rule: step.cases) 
+    case Term_s 
+    then show ?thesis
+      by simp
+  next
+    case Term_f_neq
+    then show ?thesis
+      by simp
+  next
+    case Term_f_empty
+    then show ?thesis
+      by simp
+  next
+    case (Nonterm A e)
+    then show ?thesis
+      by 
+  next
+
+
+qed
+
 end
