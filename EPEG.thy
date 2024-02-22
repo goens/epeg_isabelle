@@ -146,12 +146,12 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
              step (Star e) (x1 @ x2 @ y) \<Gamma> (Some (x1 @ x2)) R2" |
   Bind_s: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow>
            step (Delta e i) (x @ y) \<Gamma> (Some x) ((i,termListToExpr x)#R)" |
-  Bind_f: "s step e x \<Gamma> None R \<Longrightarrow> step (Delta e i) x \<Gamma> None (production \<Gamma>)" |
+  Bind_f: "step e x \<Gamma> None R \<Longrightarrow> step (Delta e i) x \<Gamma> None (production \<Gamma>)" |
   Mod_s_nil: "step e (x@y) \<Gamma> (Some x) R
             \<Longrightarrow> step (Mu e Nil) (x@y) \<Gamma> (Some x) R" |
   Mod_s_cons: "step e (x@y) \<Gamma> (Some x) R
             \<Longrightarrow> elim \<Gamma> ei ei'
-            \<Longrightarrow> step (Mu e ((n,ei)#us)) (x@y) \<Gamma> (Some x) ((n,ei')#R)" |
+            \<Longrightarrow> step (Mu e ((n,ei)#us)) (x@y) \<Gamma> (Some x) ((n,ei')#R)" | 
   Mod_f : "step e x \<Gamma> None R \<Longrightarrow> step (mu e p) x \<Gamma> None (production \<Gamma>)"
 
 
