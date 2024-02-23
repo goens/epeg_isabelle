@@ -160,48 +160,43 @@ code_pred step.
 lemma assumes hStep : "step e i \<Gamma> res R"
       (*Note that `=` is equivalence of propositions (bool) in Isabelle/HOL*)
       shows "hook \<Gamma> e' out = hook (\<Gamma> \<lparr> production := R\<rparr>) e' out" 
-
-proof
-  (induction e' rule : expr.induct)
-  case Empty 
-  show ?case 
-     proof (cases out)
-       case Succ0 
-       then show ?thesis
-       by (simp add: hook_succeeds.Empty) 
-   next
-     case Succ1
-     from hStep show ?thesis
-       (* proof cases *) 
-       (*there's  a contradiction here, both sides are always false by case analysis*)
-       sorry
-   next
-     case Fail
-     from hStep show ?thesis
-       sorry
-   qed
-next
-  case Term
-  from hStep show ?case
-  proof (cases rule: step.cases) 
-    case Term_s 
-    then show ?thesis
-      by simp
-  next
-    case Term_f_neq
-    then show ?thesis
-      by simp
-  next
-    case Term_f_empty
-    then show ?thesis
-      by simp
-  next
-    case (Nonterm A e)
-    then show ?thesis
-      by 
-  next
-
-
-qed
-
+      (*induction on the proof witness hStep *)
+      defer 
+      using hStep
+      apply(induct rule: step.induct)
+      apply(auto)
+      proof -
+      (*goal:  1. \<And>e x y \<Gamma> R i. step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow> hook \<Gamma> e' out \<Longrightarrow> hook (\<Gamma>\<lparr>production := R\<rparr>) e' out \<Longrightarrow> hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out*)
+      fix e x y \<Gamma> R i
+      assume "step e (x @ y) \<Gamma> (Some x) R"
+      assume "hook \<Gamma> e' out"
+      assume "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      show "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
+        sorry
+      next
+      fix e x y \<Gamma> R i
+      assume "step e (x @ y) \<Gamma> (Some x) R"
+      assume "\<not> hook \<Gamma> e' out"
+      assume "\<not> hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      assume "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
+      show "False"
+        sorry
+      next
+      fix e x y \<Gamma> R ei ei' n
+      assume "step e (x @ y) \<Gamma> (Some x) R"
+      assume "elim \<Gamma> ei ei'"
+      assume "hook \<Gamma> e' out"
+      assume "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      show "hook (\<Gamma>\<lparr>production := (n, ei') # R\<rparr>) e' out"
+        sorry
+      next
+      fix e x y \<Gamma> R ei ei' n
+      assume "step e (x @ y) \<Gamma> (Some x) R"
+      assume "elim \<Gamma> ei ei'"
+      assume "\<not> hook \<Gamma> e' out"
+      assume "\<not> hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      assume "hook (\<Gamma>\<lparr>production := (n, ei') # R\<rparr>) e' out"
+      show "False"
+        sorry
+      qed
 end
