@@ -118,6 +118,50 @@ where
 code_pred hook.
 code_pred succeeds.
 
+inductive_cases EmptyE[elim!]: "hook \<Gamma> Empty out"
+inductive_cases TermE[elim!]: "hook \<Gamma> (Term a) out"
+inductive_cases NontermE[elim!]: "hook \<Gamma> (Nonterm nt) out"
+inductive_cases StarE[elim!]: "hook \<Gamma> (Star e) out"
+inductive_cases NotE[elim!]: "hook \<Gamma> (Not e) out"
+inductive_cases SeqE[elim!]: "hook \<Gamma> (Seq e1 e2) out"
+inductive_cases ChoiceE[elim!]: "hook \<Gamma> (Choice e1 e2) out"
+inductive_cases MutE[elim!]: "hook \<Gamma> (Mu e us) out"
+inductive_cases LookupE[elim!]: "hook \<Gamma> (Gamma n) out"
+inductive_cases BindE[elim!]: "hook \<Gamma> (Delta e i) out"
+inductive_cases SuccE[elim!]: "succeeds \<Gamma> e"
+
+lemma "hook \<Gamma> Empty out \<Longrightarrow> out = Succ0"
+by blast
+lemma "hook \<Gamma> (Term a) out \<Longrightarrow> (out = Succ1 \<or> out = Fail)"
+by blast
+(* This needs cases corresponding to Mut and Bind_update_{1,f,0} in the conclusion to be complete. *)
+(*lemma "hook \<Gamma> (Nonterm nt) out \<Longrightarrow> (hook \<Gamma> e out \<and> lookup \<Gamma> nt = e)"
+by blast*)
+lemma "hook \<Gamma> (Star e) out \<Longrightarrow> (out = Succ0 \<or> out = Succ1)"
+by blast
+lemma "hook \<Gamma> (Not e) out \<Longrightarrow> (out = Succ0 \<or> out = Fail)"
+by blast
+lemma "hook \<Gamma> (Seq e1 e2) Succ0 \<Longrightarrow> (hook \<Gamma> e1 Succ0 \<and> hook \<Gamma> e2 Succ0)"
+by blast
+lemma "hook \<Gamma> (Seq e1 e2) Succ1 \<Longrightarrow> ((hook \<Gamma> e1 Succ1 \<and> succeeds \<Gamma> e2) \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Succ1))"
+by blast
+lemma "hook \<Gamma> (Seq e1 e2) Fail \<Longrightarrow> (hook \<Gamma> e1 Fail \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Fail))"
+by blast
+lemma "hook \<Gamma> (Choice e1 e2) Succ0 \<Longrightarrow> (hook \<Gamma> e1 Succ0 \<or> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Succ0))"
+by blast
+lemma "hook \<Gamma> (Choice e1 e2) Succ1 \<Longrightarrow> (hook \<Gamma> e1 Succ1 \<or> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Succ1))"
+by blast
+lemma "hook \<Gamma> (Choice e1 e2) Fail \<Longrightarrow> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Fail)"
+by blast
+lemma "hook \<Gamma> (Mu e us) out \<Longrightarrow> hook \<Gamma> e out"
+by blast
+lemma "hook \<Gamma> (Gamma n) out \<Longrightarrow> hook \<Gamma> (Nonterm n) out"
+by blast
+lemma "hook \<Gamma> (Delta e i) out \<Longrightarrow> hook \<Gamma> e out"
+by blast
+lemma "succeeds \<Gamma> e \<Longrightarrow> (hook \<Gamma> e Succ0 \<or> hook \<Gamma> e Succ1)"
+by blast
+
 inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow> string option \<Rightarrow> (nonterm \<times> expr) list \<Rightarrow> bool" where
   Term_s: "step (Term a) (a # x) \<Gamma> (Some [a]) (production \<Gamma>)" |
   Term_f_neq: "a \<noteq> b \<Longrightarrow> step (Term a) (b # x) \<Gamma> None (production \<Gamma>)" | 
