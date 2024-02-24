@@ -166,13 +166,48 @@ lemma assumes hStep : "step e i \<Gamma> res R"
       apply(induct rule: step.induct)
       apply(auto)
       proof -
-      (*goal:  1. \<And>e x y \<Gamma> R i. step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow> hook \<Gamma> e' out \<Longrightarrow> hook (\<Gamma>\<lparr>production := R\<rparr>) e' out \<Longrightarrow> hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out*)
       fix e x y \<Gamma> R i
       assume "step e (x @ y) \<Gamma> (Some x) R"
-      assume "hook \<Gamma> e' out"
+      assume hhook : "hook \<Gamma> e' out"
       assume "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
       show "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
-        sorry
+        proof (cases e')
+        case hempty : Empty 
+        from hempty hhook have hout : "out = Succ0" 
+          (*inversion on hhook*)
+          sorry
+        from hempty hout show ?thesis by (simp add: hook_succeeds.Empty)
+        next case (Term)
+        from this show ?thesis 
+          sorry (*...*)
+        next case (Nonterm)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Star)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Not)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Seq)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Choice)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Mu)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Delta)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Nu)
+        from this show ?thesis
+          sorry (*...*)
+        next case (Gamma)
+        from this show ?thesis
+          sorry (*...*)
+        qed
       next
       fix e x y \<Gamma> R i
       assume "step e (x @ y) \<Gamma> (Some x) R"
