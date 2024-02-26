@@ -202,8 +202,7 @@ code_pred step.
 
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
-      (*Note that `=` is equivalence of propositions (bool) in Isabelle/HOL*)
-      shows "hook \<Gamma> e' out = hook (\<Gamma> \<lparr> production := R\<rparr>) e' out" 
+      shows "hook \<Gamma> e' out \<longleftrightarrow> hook (\<Gamma> \<lparr> production := R\<rparr>) e' out" 
       (*induction on the proof witness hStep *)
       defer 
       using hStep
@@ -218,12 +217,11 @@ lemma assumes hStep : "step e i \<Gamma> res R"
         proof (cases e')
         case hempty : Empty 
         from hempty hhook have hout : "out = Succ0" 
-          (*inversion on hhook*)
-          sorry
+          by blast
         from hempty hout show ?thesis by (simp add: hook_succeeds.Empty)
         next case (Term)
         from this show ?thesis 
-          sorry (*...*)
+          using Term_Succ1 Term_f hhook by blast
         next case (Nonterm)
         from this show ?thesis
           sorry (*...*)
