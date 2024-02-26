@@ -162,6 +162,93 @@ by blast
 lemma "succeeds \<Gamma> e \<Longrightarrow> (hook \<Gamma> e Succ0 \<or> hook \<Gamma> e Succ1)"
 by blast
 
+lemma succeds_inv_elim_seq:
+  "elim \<Gamma> e e' \<Longrightarrow> succeds \<Gamma> e \<longleftrightarrow> succeds \<Gamma> e'"
+proof
+  (induction rule: elim.induct)
+  case Empty 
+  show ?case by auto
+next
+  case Term
+  thus ?case by auto
+next 
+  case Nonterm
+  thus ?case by auto
+next 
+  print_cases
+  case (Seq \<Gamma> e1 e1' e2 e2')
+  thus ?case
+    proof -
+      assume 1:"elim \<Gamma> e1 e1'"
+      assume 2:"elim \<Gamma> e2 e2'"
+      assume "succeeds \<Gamma> e1" 
+      hence 3:"hook \<Gamma> e1 Succ0 \<or> hook \<Gamma> e1 Succ1" by blast
+      assume "succeeds \<Gamma> e2" 
+      hence 4:"(hook \<Gamma> e2 Succ0 \<or> hook \<Gamma> e2 Succ1)" by blast
+      from 1 2 3 4 show "succeeds \<Gamma> (Seq e1 e2) = succeeds \<Gamma> (Seq e1' e2')" by try
+    qed    
+  qed
+
+lemma hook_inv_elim_seq:
+  assumes "elim \<Gamma> e1 e1' "
+  assumes "elim \<Gamma> e2 e2'"
+  assumes "hook \<Gamma> e1 out = hook \<Gamma> e1' out"
+  assumes "hook \<Gamma> e2 out = hook \<Gamma> e2' out"
+  shows "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out"
+proof (cases out)
+  case Succ0
+  thus ?thesis using assms
+  by (auto simp: Seq_0 assms)
+next
+  case Succ1
+  thus ?thesis using assms
+  proof -
+    assume "elim \<Gamma> e1 e1' "
+    assume "elim \<Gamma> e2 e2'"
+    assume "hook \<Gamma> e1 Succ1 = hook \<Gamma> e1' Succ1"
+    assume "hook \<Gamma> e2 Succ1 = hook \<Gamma> e2' Succ1"
+    assume "hook \<Gamma> (Seq e1 e2) Succ1"
+    hence "((hook \<Gamma> e1 Succ1 \<and> succeeds \<Gamma> e2) \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Succ1))" by blast
+    show "hook \<Gamma> (Seq e1' e2') Succ1"
+    
+
+next
+  case Fail
+  thus ?thesis using assms
+  by (auto simp: Seq_f_first Seq_f_second assms)
+
+(* for some reason I cannot use `assumes` and `shows` here, as the
+induction won't go through otherwise... *)
+lemma hook_inv_elim :
+  "elim \<Gamma> e e' \<Longrightarrow> hook \<Gamma> e out \<longleftrightarrow> hook \<Gamma> e' out"
+proof 
+  (induction rule: elim.induct)
+  case Empty 
+  show ?case by auto
+next
+  case Term
+  thus ?case by auto
+next 
+  case Nonterm
+  thus ?case by auto
+next 
+  case Seq
+  thus ?case 
+  proof (cases out)
+    case Succ0
+    thus "hook \<Gamma> (Seq e1 e2) Succ0 = hook \<Gamma> (Seq e1' e2') Succ0"
+    proof
+    have "elim \<Gamma> e1 e1'"
+      moreover have "elim \<Gamma> e2 e2'"
+    moreover have "hook \<Gamma> e1 Succ0 = hook \<Gamma> e1' Succ0"
+      moreover have "hook \<Gamma> e2 Succ0 = hook \<Gamma> e2' Succ0"
+    ultimately have " by 
+   
+qed
+   
+  
+
+
 inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow> string option \<Rightarrow> (nonterm \<times> expr) list \<Rightarrow> bool" where
   Term_s: "step (Term a) (a # x) \<Gamma> (Some [a]) (production \<Gamma>)" |
   Term_f_neq: "a \<noteq> b \<Longrightarrow> step (Term a) (b # x) \<Gamma> None (production \<Gamma>)" | 
@@ -200,6 +287,7 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
 
 code_pred step.
 
+
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
       shows "hook \<Gamma> e' out \<longleftrightarrow> hook (\<Gamma> \<lparr> production := R\<rparr>) e' out" 
@@ -209,6 +297,7 @@ lemma assumes hStep : "step e i \<Gamma> res R"
       apply(induct rule: step.induct)
       apply(auto)
       proof -
+        print_cases
       fix e x y \<Gamma> R i
       assume "step e (x @ y) \<Gamma> (Some x) R"
       assume hhook : "hook \<Gamma> e' out"
@@ -216,9 +305,8 @@ lemma assumes hStep : "step e i \<Gamma> res R"
       show "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
         proof (cases e')
         case hempty : Empty 
-        from hempty hhook have hout : "out = Succ0" 
-          by blast
-        from hempty hout show ?thesis by (simp add: hook_succeeds.Empty)
+        hence  hout : "out = Succ0" using hhook  by blast
+        thus ?thesis using hout hempty by (simp add: hook_succeeds.Empty)
         next case (Term)
         from this show ?thesis 
           using Term_Succ1 Term_f hhook by blast
