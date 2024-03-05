@@ -162,8 +162,8 @@ by blast
 lemma "succeeds \<Gamma> e \<Longrightarrow> (hook \<Gamma> e Succ0 \<or> hook \<Gamma> e Succ1)"
 by blast
 
-lemma succeds_inv_elim_seq:
-  "elim \<Gamma> e e' \<Longrightarrow> succeds \<Gamma> e \<longleftrightarrow> succeds \<Gamma> e'"
+lemma succeeds_inv_elim_seq:
+  "elim \<Gamma> e e' \<Longrightarrow> succeeds \<Gamma> e \<longleftrightarrow> succeeds \<Gamma> e'"
 proof
   (induction rule: elim.induct)
   case Empty 
