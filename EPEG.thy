@@ -368,7 +368,17 @@ next
   show ?case using Mut_main ih2 by auto
 next
   case (Mut_Cons \<Gamma> ni ni' ei ei' e P e' P')
-  show ?case by (smt (verit, ccfv_threshold) MutE Mut_Cons.IH(3) Mut_Cons.prems(1) Mut_Cons.prems(2) Mut_main append_Cons expr.distinct(13) expr.distinct(31) expr.distinct(47) expr.distinct(61) expr.distinct(73) expr.distinct(83) expr.distinct(91) expr.distinct(99) getSubExpressions.simps(8) list.inject restricted.simps)
+  assume "restricted (Mu e ((ni, ei) # P))"
+  then have "restricted e" using restricted.cases by auto
+  then have ih1: "restricted (Mu e P)" using restricted.Mu by auto
+  assume "restricted (Mu e' ((ni', ei') # P'))"
+  then have "restricted e'" using restricted.cases by auto
+  then have ih2: "restricted (Mu e' P')" using restricted.Mu by auto
+  assume "restricted (Nonterm ni) \<Longrightarrow> restricted (Nonterm ni') \<Longrightarrow> \<forall>out. hook \<Gamma> (Nonterm ni) out = hook \<Gamma> (Nonterm ni') out"
+  then have "\<forall>out. hook \<Gamma> (Nonterm ni) out = hook \<Gamma> (Nonterm ni') out" using restricted.Nonterm by auto
+  assume "restricted (Mu e P) \<Longrightarrow> restricted (Mu e' P') \<Longrightarrow> \<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out"
+  then have ih3: "\<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out" using ih1 ih2 by auto
+  show ?case by (meson MutE Mut_main ih3)
 qed
 
 
