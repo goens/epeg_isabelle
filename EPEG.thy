@@ -368,7 +368,7 @@ next
   show ?case using Mut_main ih2 by auto
 next
   case (Mut_Cons \<Gamma> ni ni' ei ei' e P e' P')
-  show ?case sorry
+  show ?case by (smt (verit, ccfv_threshold) MutE Mut_Cons.IH(3) Mut_Cons.prems(1) Mut_Cons.prems(2) Mut_main append_Cons expr.distinct(13) expr.distinct(31) expr.distinct(47) expr.distinct(61) expr.distinct(73) expr.distinct(83) expr.distinct(91) expr.distinct(99) getSubExpressions.simps(8) list.inject restricted.simps)
 qed
 
 
