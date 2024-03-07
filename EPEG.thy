@@ -430,6 +430,8 @@ code_pred step.
 
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
+      assumes "restricted e"
+      assumes "restricted e'"
       shows "hook \<Gamma> e' out \<longleftrightarrow> hook (\<Gamma> \<lparr> production := R\<rparr>) e' out"
       (*induction on the proof witness hStep *)
       defer
@@ -437,7 +439,6 @@ lemma assumes hStep : "step e i \<Gamma> res R"
       apply(induct rule: step.induct)
       apply(auto)
       proof -
-        print_cases
       fix e x y \<Gamma> R i
       assume "step e (x @ y) \<Gamma> (Some x) R"
       assume hhook : "hook \<Gamma> e' out"
