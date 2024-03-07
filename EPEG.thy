@@ -43,6 +43,19 @@ fun nontermToExpr :: " nonterm \<Rightarrow> expr" where
 fun termListToExpr :: "char list \<Rightarrow> expr" where
  "termListToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
 
+inductive restricted :: "expr \<Rightarrow> bool" where
+  Empty: "restricted Empty" |
+  Term: "restricted (Term a)" |
+  Nonterm: "restricted (Nonterm A)" |
+  Star: "restricted e \<Longrightarrow> restricted (Star e)" |
+  Not: "restricted e \<Longrightarrow> restricted (Not e)" |
+  Seq: "restricted e1 \<Longrightarrow> restricted e2 \<Longrightarrow> restricted (Seq e1 e2)" |
+  Choice: "restricted e1 \<Longrightarrow> restricted e2 \<Longrightarrow> restricted (Choice e1 e2)" |
+  Mu: "restricted e \<Longrightarrow> restricted (Mu e P)" |
+  Delta: "restricted e \<Longrightarrow> restricted (Delta e A)"
+
+code_pred restricted.
+
 inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" where
   Empty: "elim \<Gamma> Empty Empty" |
   Term: "elim \<Gamma> (Term a) (Term a)" |
