@@ -23,18 +23,6 @@ fun All :: "expr list \<Rightarrow> expr" where
   "All Nil = Empty" |
   "All (x#xs) = foldl Seq x xs"
 
-record EPEG =
-  production :: "(nonterm \<times> expr) list"
-  table :: "(nonterm \<times> (symbol list)) list"
-  scope :: name
-
-
-fun lookup :: "EPEG \<Rightarrow> nonterm \<Rightarrow> expr" where
-  "lookup \<Gamma> nt =
-    (case find (\<lambda> p. (fst p) = nt) (production \<Gamma>) of
-        None \<Rightarrow> Empty
-      | Some p \<Rightarrow> snd p)"
-
 fun nontermToExpr :: " nonterm \<Rightarrow> expr" where
  "nontermToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
 
@@ -43,6 +31,12 @@ fun nontermToExpr :: " nonterm \<Rightarrow> expr" where
 fun termListToExpr :: "char list \<Rightarrow> expr" where
  "termListToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
 
+(* We only allow Nu and Gamma to appear in the 
+  list of updates for a Mu. This ensures this
+  property by omitting constructors for these two
+  combinators, and checking recursively that they
+  are restricted *except* for the expressions
+  appearing in the update list P for Mu *)
 inductive restricted :: "expr \<Rightarrow> bool" where
   Empty: "restricted Empty" |
   Term: "restricted (Term a)" |
@@ -55,6 +49,36 @@ inductive restricted :: "expr \<Rightarrow> bool" where
   Delta: "restricted e \<Longrightarrow> restricted (Delta e A)"
 
 code_pred restricted.
+
+record EPEG =
+  production :: "(nonterm \<times> expr) list"
+  table :: "(nonterm \<times> (symbol list)) list"
+  scope :: name
+
+fun getSubExpressions :: "expr \<Rightarrow> expr list" where
+  "getSubExpressions Empty = Nil " |
+  "getSubExpressions (Nonterm _) = Nil" |
+  "getSubExpressions (Term _) = Nil" |
+  "getSubExpressions (Star e) = [e] @ getSubExpressions e" |
+  "getSubExpressions (Not e) = [e] @ getSubExpressions e" |
+  "getSubExpressions (Seq e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
+  "getSubExpressions (Choice e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
+  "getSubExpressions (Mu e us) = (e # map snd us) @ getSubExpressions e @ concat (map getSubExpressions (map snd us))" |
+  "getSubExpressions (Delta e _) = [e] @ getSubExpressions e" |
+  "getSubExpressions (Gamma _) = Nil" |
+  "getSubExpressions (Nu _) = Nil"
+
+fun expressionSet :: "EPEG \<Rightarrow> expr set" where
+  "expressionSet \<Gamma> = set (List.bind (map snd (production \<Gamma>)) getSubExpressions)"
+
+definition restrictedEPEG :: "EPEG \<Rightarrow> bool" where
+  "restrictedEPEG \<Gamma> \<equiv> \<forall> e \<in> (expressionSet \<Gamma>). restricted e"
+
+fun lookup :: "EPEG \<Rightarrow> nonterm \<Rightarrow> expr" where
+  "lookup \<Gamma> nt =
+    (case find (\<lambda> p. (fst p) = nt) (production \<Gamma>) of
+        None \<Rightarrow> Empty
+      | Some p \<Rightarrow> snd p)"
 
 inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" where
   Empty: "elim \<Gamma> Empty Empty" |
@@ -75,22 +99,6 @@ inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool
 code_pred elim.
 
 value "elim \<lparr> production = Nil, table = Nil, scope = Nil \<rparr> (Term (CHR ''a'')) (Term (CHR ''b''))"
-
-fun getSubExpressions :: "expr \<Rightarrow> expr list" where
-  "getSubExpressions Empty = Nil " |
-  "getSubExpressions (Nonterm _) = Nil" |
-  "getSubExpressions (Term _) = Nil" |
-  "getSubExpressions (Star e) = [e] @ getSubExpressions e" |
-  "getSubExpressions (Not e) = [e] @ getSubExpressions e" |
-  "getSubExpressions (Seq e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
-  "getSubExpressions (Choice e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
-  "getSubExpressions (Mu e us) = (e # map snd us) @ getSubExpressions e @ concat (map getSubExpressions (map snd us))" |
-  "getSubExpressions (Delta e _) = [e] @ getSubExpressions e" |
-  "getSubExpressions (Gamma _) = Nil" |
-  "getSubExpressions (Nu _) = Nil"
-
-fun expressionSet :: "EPEG \<Rightarrow> expr list" where
-  "expressionSet \<Gamma> = List.bind (map snd (production \<Gamma>)) getSubExpressions"
 
 datatype outcome =
   Succ0 |
@@ -118,12 +126,12 @@ where
   Choice_Succ1: "hook \<Gamma> e1 Succ1 \<Longrightarrow> hook \<Gamma> (Choice e1 e2) Succ1" |
   Choice_second: "hook \<Gamma> e1 Fail \<Longrightarrow> hook \<Gamma> e2 out \<Longrightarrow> hook \<Gamma> (Choice e1 e2) out" |
   Mut_main: "hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Mu e us) out" |
-  Mut_update: "(List.member (expressionSet \<Gamma>) (Mu e us)) \<Longrightarrow> List.member us (n, u) \<Longrightarrow> hook \<Gamma> u out \<Longrightarrow> hook \<Gamma> (Nonterm n) out" |
+  Mut_update: "(Mu e us) \<in> (expressionSet \<Gamma>) \<Longrightarrow> List.member us (n, u) \<Longrightarrow> hook \<Gamma> u out \<Longrightarrow> hook \<Gamma> (Nonterm n) out" |
   Lookup: "hook \<Gamma> (Nonterm n) out \<Longrightarrow> hook \<Gamma> (Gamma n) out" |
   Bind_main: "hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Delta e i) out" |
-  Bind_update_1: "(List.member  (expressionSet \<Gamma>) (Delta e i)) \<Longrightarrow> hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ1" |
-  Bind_update_f: "(List.member (expressionSet \<Gamma>) (Delta e i)) \<Longrightarrow> hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Nonterm i) Fail" |
-  Bind_update_0: "(List.member (expressionSet \<Gamma>) (Delta e i)) \<Longrightarrow> hook \<Gamma> e Succ0 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ0" |
+  Bind_update_1: "(Delta e i) \<in>  (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ1" |
+  Bind_update_f: "(Delta e i) \<in> (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Nonterm i) Fail" |
+  Bind_update_0: "(Delta e i) \<in> (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Succ0 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ0" |
   NuAnythingGoes : "hook \<Gamma> (Nu n) out" |
   WithoutConsuming: "hook \<Gamma> e Succ0 \<Longrightarrow> succeeds \<Gamma> e" |
   WithConsuming: "hook \<Gamma> e Succ1 \<Longrightarrow> succeeds \<Gamma> e"
@@ -380,9 +388,6 @@ next
   then have ih3: "\<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out" using ih1 ih2 by auto
   show ?case by (meson MutE Mut_main ih3)
 qed
-
-
-
 
 inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow> string option \<Rightarrow> (nonterm \<times> expr) list \<Rightarrow> bool" where
   Term_s: "step (Term a) (a # x) \<Gamma> (Some [a]) (production \<Gamma>)" |
