@@ -201,15 +201,15 @@ next
   assume ih1: "elim \<Gamma> e1 e1'"
   assume ih2: "elim \<Gamma> e2 e2'"
   assume r1: "restricted (Seq e1 e2)"
-  from r1 have "restricted e1" using restricted.cases by auto
-  from r1 have "restricted e2" using restricted.cases by auto
+  from r1 have aux1: "restricted e1" using restricted.cases by auto
+  from r1 have aux2: "restricted e2" using restricted.cases by auto
   assume r2: "restricted (Seq e1' e2')"
-  from r2 have "restricted e1'" using restricted.cases by auto
-  from r2 have "restricted e2'" using restricted.cases by auto
+  from r2 have aux1': "restricted e1'" using restricted.cases by auto
+  from r2 have aux2': "restricted e2'" using restricted.cases by auto
   assume "restricted e1 \<Longrightarrow> restricted e1' \<Longrightarrow> \<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out"
-  then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using \<open>restricted e1'\<close> \<open>restricted e1\<close> by blast
+  then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using aux1 aux1' by blast
   assume "restricted e2 \<Longrightarrow> restricted e2' \<Longrightarrow> \<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out"
-  then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using \<open>restricted e2'\<close> \<open>restricted e2\<close> by blast
+  then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using aux2 aux2' by blast
   show ?case
   proof
     fix out
@@ -252,15 +252,15 @@ next
   assume ih1: "elim \<Gamma> e1 e1'"
   assume ih2: "elim \<Gamma> e2 e2'"
   assume r1: "restricted (Choice e1 e2)"
-  from r1 have "restricted e1" using restricted.cases by auto
-  from r1 have "restricted e2" using restricted.cases by auto
+  from r1 have aux1: "restricted e1" using restricted.cases by auto
+  from r1 have aux2: "restricted e2" using restricted.cases by auto
   assume r2: "restricted (Choice e1' e2')"
-  from r2 have "restricted e1'" using restricted.cases by auto
-  from r2 have "restricted e2'" using restricted.cases by auto
+  from r2 have aux1': "restricted e1'" using restricted.cases by auto
+  from r2 have aux2': "restricted e2'" using restricted.cases by auto
   assume "restricted e1 \<Longrightarrow> restricted e1' \<Longrightarrow> \<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out"
-  then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using \<open>restricted e1'\<close> \<open>restricted e1\<close> by blast
+  then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using aux1 aux1' by blast
   assume "restricted e2 \<Longrightarrow> restricted e2' \<Longrightarrow> \<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out"
-  then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using \<open>restricted e2'\<close> \<open>restricted e2\<close> by blast
+  then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using aux2 aux2' by blast
   show ?case
   proof
     fix out
@@ -297,12 +297,12 @@ next
 next
   case (Not \<Gamma> e e')
   assume ih1: "elim \<Gamma> e e'"
-  assume r1: "restricted (Not e)"
-  from r1 have "restricted e" using restricted.cases by auto
-  assume r2: "restricted (Not e')"
-  from r2 have "restricted e'" using restricted.cases by auto
+  assume "restricted (Not e)"
+  then have aux: "restricted e" using restricted.cases by auto
+  assume "restricted (Not e')"
+  then have aux': "restricted e'" using restricted.cases by auto
   assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using \<open>restricted e'\<close> \<open>restricted e\<close> by blast
+  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
   show ?case
   proof
     fix out
@@ -321,12 +321,12 @@ next
 next
   case (Star \<Gamma> e e')
   assume ih1: "elim \<Gamma> e e'"
-  assume r1: "restricted (Star e)"
-  from r1 have "restricted e" using restricted.cases by auto
-  assume r2: "restricted (Star e')"
-  from r2 have "restricted e'" using restricted.cases by auto
+  assume "restricted (Star e)"
+  then have aux: "restricted e" using restricted.cases by auto
+  assume "restricted (Star e')"
+  then have aux': "restricted e'" using restricted.cases by auto
   assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using \<open>restricted e'\<close> \<open>restricted e\<close> by blast
+  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
   show ?case
   proof
     fix out
@@ -345,12 +345,12 @@ next
 next
   case (Delta \<Gamma> e e' A)
   assume ih1: "elim \<Gamma> e e'"
-  assume r1: "restricted (Delta e A)"
-  from r1 have "restricted e" using restricted.cases by auto
-  assume r2: "restricted (Delta e' A)"
-  from r2 have "restricted e'" using restricted.cases by auto
+  assume "restricted (Delta e A)"
+  then have aux: "restricted e" using restricted.cases by auto
+  assume "restricted (Delta e' A)"
+  then have aux': "restricted e'" using restricted.cases by auto
   assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using \<open>restricted e'\<close> \<open>restricted e\<close> by blast
+  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
   show ?case
   proof
     fix out
@@ -367,12 +367,12 @@ next
 next
   case (Mut_Nil \<Gamma> e e')
   assume ih1: "elim \<Gamma> e e'"
-  assume r1: "restricted (Mu e [])"
-  from r1 have "restricted e" using restricted.cases by auto
-  assume r2: "restricted (Mu e' [])"
-  from r2 have "restricted e'" using restricted.cases by auto
+  assume "restricted (Mu e [])"
+  then have aux: "restricted e" using restricted.cases by auto
+  assume "restricted (Mu e' [])"
+  then have aux': "restricted e'" using restricted.cases by auto
   assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using \<open>restricted e'\<close> \<open>restricted e\<close> by blast
+  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
   show ?case using Mut_main ih2 by auto
 next
   case (Mut_Cons \<Gamma> ni ni' ei ei' e P e' P')
@@ -382,8 +382,6 @@ next
   assume "restricted (Mu e' ((ni', ei') # P'))"
   then have "restricted e'" using restricted.cases by auto
   then have ih2: "restricted (Mu e' P')" using restricted.Mu by auto
-  assume "restricted (Nonterm ni) \<Longrightarrow> restricted (Nonterm ni') \<Longrightarrow> \<forall>out. hook \<Gamma> (Nonterm ni) out = hook \<Gamma> (Nonterm ni') out"
-  then have "\<forall>out. hook \<Gamma> (Nonterm ni) out = hook \<Gamma> (Nonterm ni') out" using restricted.Nonterm by auto
   assume "restricted (Mu e P) \<Longrightarrow> restricted (Mu e' P') \<Longrightarrow> \<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out"
   then have ih3: "\<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out" using ih1 ih2 by auto
   show ?case by (meson MutE Mut_main ih3)
