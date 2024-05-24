@@ -10,14 +10,17 @@ datatype expr =
   Empty |
   Term char |
   Nonterm string |
-  Star expr |
+  (* Star expr | *) (* `Star` is syntactic sugar *)
   Not expr |
   Seq expr expr |
   Choice expr expr |
-  Mu expr "((nonterm \<times> expr) list)" |
-  Delta expr nonterm |
-  Nu nonterm |
-  Gamma nonterm
+  Bind expr nonterm |
+  Mut nonterm updateExpr
+(* The `and` here lets us define mutually inductive types *)
+ and updateExpr =
+  Expr expr |
+  (* Nu nonterm | *) (* removing Nu for now *)
+  Lookup nonterm
 
 fun All :: "expr list \<Rightarrow> expr" where
   "All Nil = Empty" |
@@ -31,42 +34,28 @@ fun nontermToExpr :: " nonterm \<Rightarrow> expr" where
 fun termListToExpr :: "char list \<Rightarrow> expr" where
  "termListToExpr nt = foldr (\<lambda> c e. expr.Seq (expr.Term c) e) nt expr.Empty"
 
-(* We only allow Nu and Gamma to appear in the 
-  list of updates for a Mu. This ensures this
-  property by omitting constructors for these two
-  combinators, and checking recursively that they
-  are restricted *except* for the expressions
-  appearing in the update list P for Mu *)
-inductive restricted :: "expr \<Rightarrow> bool" where
-  Empty: "restricted Empty" |
-  Term: "restricted (Term a)" |
-  Nonterm: "restricted (Nonterm A)" |
-  Star: "restricted e \<Longrightarrow> restricted (Star e)" |
-  Not: "restricted e \<Longrightarrow> restricted (Not e)" |
-  Seq: "restricted e1 \<Longrightarrow> restricted e2 \<Longrightarrow> restricted (Seq e1 e2)" |
-  Choice: "restricted e1 \<Longrightarrow> restricted e2 \<Longrightarrow> restricted (Choice e1 e2)" |
-  Mu: "restricted e \<Longrightarrow> restricted (Mu e P)" |
-  Delta: "restricted e \<Longrightarrow> restricted (Delta e A)"
-
-code_pred restricted.
-
 record EPEG =
   production :: "(nonterm \<times> expr) list"
   table :: "(nonterm \<times> (symbol list)) list"
   scope :: name
 
+fun stripUpdate :: "updateExpr \<Rightarrow> expr" where
+  "stripUpdate (Expr e) = e" |
+  "stripUpdate (Lookup nt) = (Nonterm nt)"
+
+lemma stripUpdate_decreasing : "size (stripUpdate u) < Suc (size u)"
+  by (metis One_nat_def add.commute expr.size(11) le_imp_less_Suc lessI less_Suc_eq_0_disj order_less_imp_le plus_1_eq_Suc stripUpdate.elims updateExpr.size(3))
+
 fun getSubExpressions :: "expr \<Rightarrow> expr list" where
   "getSubExpressions Empty = Nil " |
   "getSubExpressions (Nonterm _) = Nil" |
   "getSubExpressions (Term _) = Nil" |
-  "getSubExpressions (Star e) = [e] @ getSubExpressions e" |
+(*"getSubExpressions (Star e) = [e] @ getSubExpressions e" | *)
   "getSubExpressions (Not e) = [e] @ getSubExpressions e" |
   "getSubExpressions (Seq e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
   "getSubExpressions (Choice e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
-  "getSubExpressions (Mu e us) = (e # map snd us) @ getSubExpressions e @ concat (map getSubExpressions (map snd us))" |
-  "getSubExpressions (Delta e _) = [e] @ getSubExpressions e" |
-  "getSubExpressions (Gamma _) = Nil" |
-  "getSubExpressions (Nu _) = Nil"
+  "getSubExpressions (Mut _ u) = getSubExpressions (stripUpdate u)" |
+  "getSubExpressions (Bind e _) = [e] @ getSubExpressions e"
 
 fun expressionSet :: "EPEG \<Rightarrow> expr set" where
   "expressionSet \<Gamma> = set (List.bind (map snd (production \<Gamma>)) getSubExpressions)"
