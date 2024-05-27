@@ -60,33 +60,34 @@ fun getSubExpressions :: "expr \<Rightarrow> expr list" where
 fun expressionSet :: "EPEG \<Rightarrow> expr set" where
   "expressionSet \<Gamma> = set (List.bind (map snd (production \<Gamma>)) getSubExpressions)"
 
-definition restrictedEPEG :: "EPEG \<Rightarrow> bool" where
-  "restrictedEPEG \<Gamma> \<equiv> \<forall> e \<in> (expressionSet \<Gamma>). restricted e"
-
 fun lookup :: "EPEG \<Rightarrow> nonterm \<Rightarrow> expr" where
   "lookup \<Gamma> nt =
     (case find (\<lambda> p. (fst p) = nt) (production \<Gamma>) of
         None \<Rightarrow> Empty
       | Some p \<Rightarrow> snd p)"
 
-inductive elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" where
+inductive
+  elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" and
+  elimUpdate :: "EPEG \<Rightarrow> updateExpr \<Rightarrow> updateExpr \<Rightarrow> bool"
+where
   Empty: "elim \<Gamma> Empty Empty" |
   Term: "elim \<Gamma> (Term a) (Term a)" |
   Nonterm: "elim \<Gamma> (Nonterm A) (Nonterm A)" |
   Seq: "elim \<Gamma> e1 e1' \<Longrightarrow> elim \<Gamma> e2 e2' \<Longrightarrow> elim \<Gamma> (Seq e1 e2) (Seq e1' e2')" |
   Choice: "elim \<Gamma> e1 e1' \<Longrightarrow> elim \<Gamma> e2 e2' \<Longrightarrow> elim \<Gamma> (Choice e1 e2) (Choice e1' e2')" |
   Not: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Not e) (Not e')" |
-  Star: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Star e) (Star e')" |
-  Delta: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Delta e A) (Delta e' A)" |
-  Elim1: "lookup \<Gamma> n = e \<Longrightarrow> elim \<Gamma> (Gamma n) e" |
-  Elim2: "lookup \<Gamma> n = nontermToExpr A \<Longrightarrow> elim \<Gamma> (Nu n) (Nonterm A)" |
-  Mut_Nil : "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Mu e Nil) (Mu e' Nil)" |
-  Mut_Cons : "elim \<Gamma> (Nonterm ni) (Nonterm ni') \<Longrightarrow>
-              elim \<Gamma> ei ei' \<Longrightarrow> elim \<Gamma> (Mu e P) (Mu e' P') \<Longrightarrow>
-              elim \<Gamma> (Mu e ((ni,ei)#P)) (Mu e' ((ni',ei')#P'))"
+(*Star: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Star e) (Star e')" |*)
+  Bind: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Bind e A) (Bind e' A)" |
+  Mut : "elimUpdate \<Gamma> P P' \<Longrightarrow> elim \<Gamma> (Mu P) (Mu P')" |
+
+  updateExpr : "elim \<Gamma> e e'\<Longrightarrow> elimUpdate \<Gamma> (Expr e) (Expr e')" |
+  updateLookup : "lookup \<Gamma> n = e \<Longrightarrow> elimUpdate \<Gamma> (Lookup n) (Expr e)"
+(*Elim2: "lookup \<Gamma> n = nontermToExpr A \<Longrightarrow> elim \<Gamma> (Nu n) (Nonterm A)" |*) (* nu case *)
 
 code_pred elim.
+code_pred elimUpdate.
 
+(* no equations error - seems like code_pred doesn't work anymore *)
 value "elim \<lparr> production = Nil, table = Nil, scope = Nil \<rparr> (Term (CHR ''a'')) (Term (CHR ''b''))"
 
 datatype outcome =
@@ -102,8 +103,8 @@ where
   Term_Succ1: "hook \<Gamma> (Term a) Succ1" |
   Term_f: "hook \<Gamma> (Term a) Fail" |
   Nonterm: "lookup \<Gamma> nt = e \<Longrightarrow> hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Nonterm nt) out" |
-  Star_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Star e) Succ0" |
-  Star_1: "hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Star e) Succ1" |
+(*Star_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Star e) Succ0" | *)
+(*Star_1: "hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Star e) Succ1" | *)
   Not_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Not e) Succ0" |
   Not_f: "succeeds \<Gamma> e \<Longrightarrow> hook \<Gamma> (Not e) Fail" |
   Seq_0: "hook \<Gamma> e1 Succ0 \<Longrightarrow> hook \<Gamma> e2 Succ0 \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Succ0" |
@@ -114,14 +115,14 @@ where
   Choice_Succ0: "hook \<Gamma> e1 Succ0 \<Longrightarrow> hook \<Gamma> (Choice e1 e2) Succ0" |
   Choice_Succ1: "hook \<Gamma> e1 Succ1 \<Longrightarrow> hook \<Gamma> (Choice e1 e2) Succ1" |
   Choice_second: "hook \<Gamma> e1 Fail \<Longrightarrow> hook \<Gamma> e2 out \<Longrightarrow> hook \<Gamma> (Choice e1 e2) out" |
-  Mut_main: "hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Mu e us) out" |
-  Mut_update: "(Mu e us) \<in> (expressionSet \<Gamma>) \<Longrightarrow> List.member us (n, u) \<Longrightarrow> hook \<Gamma> u out \<Longrightarrow> hook \<Gamma> (Nonterm n) out" |
-  Lookup: "hook \<Gamma> (Nonterm n) out \<Longrightarrow> hook \<Gamma> (Gamma n) out" |
-  Bind_main: "hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Delta e i) out" |
-  Bind_update_1: "(Delta e i) \<in>  (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ1" |
-  Bind_update_f: "(Delta e i) \<in> (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Nonterm i) Fail" |
-  Bind_update_0: "(Delta e i) \<in> (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Succ0 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ0" |
-  NuAnythingGoes : "hook \<Gamma> (Nu n) out" |
+  Mut_expr: "hook \<Gamma> u out \<Longrightarrow> hook \<Gamma> (Mut A (Expr u)) out" |
+  Mut_Lookup: "hook \<Gamma> (Nonterm n) out \<Longrightarrow> hook \<Gamma> (Mut A (Lookup n)) out" |
+  Bind_main: "hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Bind e i) out" |
+  Bind_update_1: "(Bind e i) \<in>  (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ1" |
+  Bind_update_f: "(Bind e i) \<in> (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Nonterm i) Fail" |
+  Bind_update_0: "(Bind e i) \<in> (expressionSet \<Gamma>) \<Longrightarrow> hook \<Gamma> e Succ0 \<Longrightarrow> hook \<Gamma> (Nonterm i) Succ0" |
+  (* NuAnythingGoes : "hook \<Gamma> (Nu n) out" | *)
+
   WithoutConsuming: "hook \<Gamma> e Succ0 \<Longrightarrow> succeeds \<Gamma> e" |
   WithConsuming: "hook \<Gamma> e Succ1 \<Longrightarrow> succeeds \<Gamma> e"
 
