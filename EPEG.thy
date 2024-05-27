@@ -43,7 +43,7 @@ fun stripUpdate :: "updateExpr \<Rightarrow> expr" where
   "stripUpdate (Expr e) = e" |
   "stripUpdate (Lookup nt) = (Nonterm nt)"
 
-lemma stripUpdate_decreasing : "size (stripUpdate u) < Suc (size u)"
+lemma stripUpdate_decreasing [simp]: "size (stripUpdate u) < Suc (size u)"
   by (metis One_nat_def add.commute expr.size(11) le_imp_less_Suc lessI less_Suc_eq_0_disj order_less_imp_le plus_1_eq_Suc stripUpdate.elims updateExpr.size(3))
 
 fun getSubExpressions :: "expr \<Rightarrow> expr list" where
