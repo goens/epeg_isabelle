@@ -172,7 +172,7 @@ by blast
 lemma hook_inv_elim :
   "elim \<Gamma> e e' \<Longrightarrow> (\<forall> out. hook \<Gamma> e out \<longleftrightarrow> hook \<Gamma> e' out)"
 proof
-  (induction rule: elim_elimUpdate.induct)
+  (induction rule: elim_elimUpdate.inducts(1))
   case Empty
   show ?case by auto
 next
