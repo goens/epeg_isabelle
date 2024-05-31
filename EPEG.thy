@@ -132,11 +132,11 @@ code_pred succeeds.
 inductive_cases EmptyE[elim!]: "hook \<Gamma> Empty out"
 inductive_cases TermE[elim!]: "hook \<Gamma> (Term a) out"
 inductive_cases NontermE[elim!]: "hook \<Gamma> (Nonterm nt) out"
-inductive_cases StarE[elim!]: "hook \<Gamma> (Star e) out"
+(* inductive_cases StarE[elim!]: "hook \<Gamma> (Star e) out" *)
 inductive_cases NotE[elim!]: "hook \<Gamma> (Not e) out"
 inductive_cases SeqE[elim!]: "hook \<Gamma> (Seq e1 e2) out"
 inductive_cases ChoiceE[elim!]: "hook \<Gamma> (Choice e1 e2) out"
-inductive_cases MutE[elim!]: "hook \<Gamma> (Mu e us) out"
+inductive_cases MutE[elim!]: "hook \<Gamma> (Mut A u) out"
 inductive_cases LookupE[elim!]: "hook \<Gamma> (Gamma n) out"
 inductive_cases BindE[elim!]: "hook \<Gamma> (Delta e i) out"
 inductive_cases SuccE[elim!]: "succeeds \<Gamma> e"
@@ -148,8 +148,8 @@ by blast
 (* This needs cases corresponding to Mut and Bind_update_{1,f,0} in the conclusion to be complete. *)
 (*lemma "hook \<Gamma> (Nonterm nt) out \<Longrightarrow> (hook \<Gamma> e out \<and> lookup \<Gamma> nt = e)"
 by blast*)
-lemma "hook \<Gamma> (Star e) out \<Longrightarrow> (out = Succ0 \<or> out = Succ1)"
-by blast
+(* lemma "hook \<Gamma> (Star e) out \<Longrightarrow> (out = Succ0 \<or> out = Succ1)"
+by blast *)
 lemma "hook \<Gamma> (Not e) out \<Longrightarrow> (out = Succ0 \<or> out = Fail)"
 by blast
 lemma "hook \<Gamma> (Seq e1 e2) Succ0 \<Longrightarrow> (hook \<Gamma> e1 Succ0 \<and> hook \<Gamma> e2 Succ0)"
@@ -164,20 +164,15 @@ lemma "hook \<Gamma> (Choice e1 e2) Succ1 \<Longrightarrow> (hook \<Gamma> e1 Su
 by blast
 lemma "hook \<Gamma> (Choice e1 e2) Fail \<Longrightarrow> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Fail)"
 by blast
-lemma "hook \<Gamma> (Mu e us) out \<Longrightarrow> hook \<Gamma> e out"
-by blast
-lemma "hook \<Gamma> (Gamma n) out \<Longrightarrow> hook \<Gamma> (Nonterm n) out"
-by blast
-lemma "hook \<Gamma> (Delta e i) out \<Longrightarrow> hook \<Gamma> e out"
+lemma "hook \<Gamma> (Bind e i) out \<Longrightarrow> hook \<Gamma> e out"
 by blast
 lemma "succeeds \<Gamma> e \<Longrightarrow> (hook \<Gamma> e Succ0 \<or> hook \<Gamma> e Succ1)"
 by blast
 
-
 lemma hook_inv_elim :
-  "elim \<Gamma> e e' \<Longrightarrow> restricted e \<Longrightarrow> restricted e' \<Longrightarrow> (\<forall> out. hook \<Gamma> e out \<longleftrightarrow> hook \<Gamma> e' out)"
+  "elim \<Gamma> e e' \<Longrightarrow> (\<forall> out. hook \<Gamma> e out \<longleftrightarrow> hook \<Gamma> e' out)"
 proof
-  (induction rule: elim.induct)
+  (induction rule: elim_elimUpdate.induct)
   case Empty
   show ?case by auto
 next
@@ -399,22 +394,17 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
              step (Choice e1 e2) x \<Gamma> None (production \<Gamma>)" |
   Not_s: "step e x \<Gamma> None R \<Longrightarrow> step (Not e) x \<Gamma> (Some []) (production \<Gamma>)" |
   Not_f: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow> step (Not e) (x @ y) \<Gamma> None (production \<Gamma>)" |
-  Star_base: "step e x \<Gamma> None R \<Longrightarrow> step (Star e) x \<Gamma> (Some []) (production \<Gamma>)" |
+(*Star_base: "step e x \<Gamma> None R \<Longrightarrow> step (Star e) x \<Gamma> (Some []) (production \<Gamma>)" |
   Star_ind: "step e (x1 @ x2 @ y) \<Gamma> (Some x1) R1 \<Longrightarrow>
              step (Star e) (x2 @ y) (\<Gamma>\<lparr>production := R1\<rparr>) (Some x2) R2 \<Longrightarrow>
-             step (Star e) (x1 @ x2 @ y) \<Gamma> (Some (x1 @ x2)) R2" |
+             step (Star e) (x1 @ x2 @ y) \<Gamma> (Some (x1 @ x2)) R2" | *)
   Bind_s: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow>
-           step (Delta e i) (x @ y) \<Gamma> (Some x) ((i,termListToExpr x)#R)" |
-  Bind_f: "step e x \<Gamma> None R \<Longrightarrow> step (Delta e i) x \<Gamma> None (production \<Gamma>)" |
-  Mod_s_nil: "step e (x@y) \<Gamma> (Some x) R
-            \<Longrightarrow> step (Mu e Nil) (x@y) \<Gamma> (Some x) R" |
-  Mod_s_cons: "step e (x@y) \<Gamma> (Some x) R
-            \<Longrightarrow> elim \<Gamma> ei ei'
-            \<Longrightarrow> step (Mu e ((n,ei)#us)) (x@y) \<Gamma> (Some x) ((n,ei')#R)" |
-  Mod_f : "step e x \<Gamma> None R \<Longrightarrow> step (Mu e p) x \<Gamma> None (production \<Gamma>)"
+           step (Bind e i) (x @ y) \<Gamma> (Some x) ((i,termListToExpr x)#R)" |
+  Bind_f: "step e x \<Gamma> None R \<Longrightarrow> step (Bind e i) x \<Gamma> None (production \<Gamma>)" |
+  Mod: "elim \<Gamma> ei ei' \<Longrightarrow>
+        step (Mu (n,ei)) x \<Gamma> (Some []) ((n,ei')#R)"
 
 code_pred step.
-
 
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
