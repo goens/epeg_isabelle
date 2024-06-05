@@ -18,7 +18,14 @@ datatype expr =
   Mut nonterm updateExpr
 (* The `and` here lets us define mutually inductive types *)
  and updateExpr =
-  Expr expr |
+  uEmpty |
+  uTerm char |
+  uNonterm string |
+  (* Star expr | *) (* `Star` is syntactic sugar *)
+  uNot expr |
+  uSeq expr expr |
+  uChoice expr expr |
+  uBind expr nonterm |
   (* Nu nonterm | *) (* removing Nu for now *)
   Lookup nonterm
 
@@ -40,11 +47,42 @@ record EPEG =
   scope :: name
 
 fun stripUpdate :: "updateExpr \<Rightarrow> expr" where
-  "stripUpdate (Expr e) = e" |
+  "stripUpdate uEmpty = Empty" |
+  "stripUpdate (uTerm c) = (Term c)" |
+  "stripUpdate (uNonterm s) = (Nonterm s)" |
+  "stripUpdate (uNot e) = (Not e)" |
+  "stripUpdate (uSeq e1 e2) = (Seq e1 e2)" |
+  "stripUpdate (uChoice e1 e2) = (Choice e1 e2)" |
+  "stripUpdate (uBind e nt) = (Bind e nt)" |
   "stripUpdate (Lookup nt) = (Nonterm nt)"
 
 lemma stripUpdate_decreasing [simp]: "size (stripUpdate u) < Suc (size u)"
-  by (metis One_nat_def add.commute expr.size(11) le_imp_less_Suc lessI less_Suc_eq_0_disj order_less_imp_le plus_1_eq_Suc stripUpdate.elims updateExpr.size(3))
+proof
+ (cases u)
+  case uEmpty
+  then show ?thesis by auto
+next
+  case (uTerm x2)
+  then show ?thesis by auto
+next
+  case (uNonterm x3)
+  then show ?thesis by auto
+next
+  case (uNot x4)
+  then show ?thesis by auto
+next
+  case (uSeq x51 x52)
+  then show ?thesis by auto
+next
+  case (uChoice x61 x62)
+  then show ?thesis by auto
+next
+  case (uBind x71 x72)
+  then show ?thesis by auto
+next
+  case (Lookup x8)
+  then show ?thesis by auto
+qed
 
 fun getSubExpressions :: "expr \<Rightarrow> expr list" where
   "getSubExpressions Empty = Nil " |
