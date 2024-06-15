@@ -214,7 +214,7 @@ by blast
 lemma "succeeds \<Gamma> e \<Longrightarrow> (hook \<Gamma> e Succ0 \<or> hook \<Gamma> e Succ1)"
 by blast
 
-lemma hook_inv_elim :
+(* lemma hook_inv_elim :
   "elim \<Gamma> e e' \<Longrightarrow> (\<forall> out. hook \<Gamma> e out \<longleftrightarrow> hook \<Gamma> e' out)"
 proof
   (induction rule: elim_elimUpdate.inducts(1))
@@ -415,7 +415,7 @@ proof
     assume "restricted (Mu e P) \<Longrightarrow> restricted (Mu e' P') \<Longrightarrow> \<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out"
     then have ih3: "\<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out" using ih1 ih2 by auto
     show ?case by (meson MutE Mut_main ih3)
-qed
+qed *)
 
 inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow> string option \<Rightarrow> (nonterm \<times> expr) list \<Rightarrow> bool" where
   Term_s: "step (Term a) (a # x) \<Gamma> (Some [a]) (production \<Gamma>)" |
@@ -439,17 +439,20 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
              step (Choice e1 e2) x \<Gamma> None (production \<Gamma>)" |
   Not_s: "step e x \<Gamma> None R \<Longrightarrow> step (Not e) x \<Gamma> (Some []) (production \<Gamma>)" |
   Not_f: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow> step (Not e) (x @ y) \<Gamma> None (production \<Gamma>)" |
-(*Star_base: "step e x \<Gamma> None R \<Longrightarrow> step (Star e) x \<Gamma> (Some []) (production \<Gamma>)" |
+  (*Star_base: "step e x \<Gamma> None R \<Longrightarrow> step (Star e) x \<Gamma> (Some []) (production \<Gamma>)" |
   Star_ind: "step e (x1 @ x2 @ y) \<Gamma> (Some x1) R1 \<Longrightarrow>
              step (Star e) (x2 @ y) (\<Gamma>\<lparr>production := R1\<rparr>) (Some x2) R2 \<Longrightarrow>
              step (Star e) (x1 @ x2 @ y) \<Gamma> (Some (x1 @ x2)) R2" | *)
   Bind_s: "step e (x @ y) \<Gamma> (Some x) R \<Longrightarrow>
            step (Bind e i) (x @ y) \<Gamma> (Some x) ((i,termListToExpr x)#R)" |
   Bind_f: "step e x \<Gamma> None R \<Longrightarrow> step (Bind e i) x \<Gamma> None (production \<Gamma>)" |
-  Mod: "elim \<Gamma> ei ei' \<Longrightarrow>
-        step (Mu (n,ei)) x \<Gamma> (Some []) ((n,ei')#R)"
+  Mod: "elim \<Gamma> e e' \<Longrightarrow>
+        step (Mut nt u) x \<Gamma> (Some []) ((nt, e') # (filter (\<lambda> p . fst p \<noteq> nt) (production \<Gamma>)))"
 
 code_pred step.
+
+(* something has gone wrong with code_pred *)
+value "step (Term (CHR ''a'')) ((CHR ''a'') # [CHR ''b'']) \<lparr> production = [], table = Nil, scope = Nil \<rparr> (Some ''a'') []"
 
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
