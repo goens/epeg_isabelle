@@ -6,6 +6,18 @@ type_synonym identifier = string
 type_synonym symbol = "char list"
 type_synonym name = "string list"
 
+datatype updateExpr =
+  uEmpty |
+  uTerm char |
+  uNonterm string |
+  (* Star expr | *) (* `Star` is syntactic sugar *)
+  uNot updateExpr |
+  uSeq updateExpr updateExpr |
+  uChoice updateExpr updateExpr |
+  uBind updateExpr nonterm |
+  (* Nu nonterm | *) (* removing Nu for now *)
+  Lookup nonterm
+
 datatype expr =
   Empty |
   Term char |
@@ -16,18 +28,6 @@ datatype expr =
   Choice expr expr |
   Bind expr nonterm |
   Mut nonterm updateExpr
-(* The `and` here lets us define mutually inductive types *)
- and updateExpr =
-  uEmpty |
-  uTerm char |
-  uNonterm string |
-  (* Star expr | *) (* `Star` is syntactic sugar *)
-  uNot expr |
-  uSeq expr expr |
-  uChoice expr expr |
-  uBind expr nonterm |
-  (* Nu nonterm | *) (* removing Nu for now *)
-  Lookup nonterm
 
 fun All :: "expr list \<Rightarrow> expr" where
   "All Nil = Empty" |
@@ -48,52 +48,59 @@ record EPEG =
 
 fun stripUpdate :: "updateExpr \<Rightarrow> expr" where
   "stripUpdate uEmpty = Empty" |
-  "stripUpdate (uTerm c) = (Term c)" |
-  "stripUpdate (uNonterm s) = (Nonterm s)" |
-  "stripUpdate (uNot e) = (Not e)" |
-  "stripUpdate (uSeq e1 e2) = (Seq e1 e2)" |
-  "stripUpdate (uChoice e1 e2) = (Choice e1 e2)" |
-  "stripUpdate (uBind e nt) = (Bind e nt)" |
-  "stripUpdate (Lookup nt) = (Nonterm nt)"
+  "stripUpdate (uTerm c) = Term c" |
+  "stripUpdate (uNonterm s) = Nonterm s" |
+  "stripUpdate (uNot e) = (Not (stripUpdate e))" |
+  "stripUpdate (uSeq e1 e2) = (Seq (stripUpdate e1) (stripUpdate e2))" |
+  "stripUpdate (uChoice e1 e2) = (Choice (stripUpdate e1) (stripUpdate e2))" |
+  "stripUpdate (uBind e nt) = (Bind (stripUpdate e) nt)" |
+  "stripUpdate (Lookup nt) = (Nonterm nt)" 
 
 lemma stripUpdate_decreasing [simp]: "size (stripUpdate u) < Suc (size u)"
 proof
- (cases u)
+ (induction u)
   case uEmpty
-  then show ?thesis by auto
-next
-  case (uTerm x2)
-  then show ?thesis by auto
-next
-  case (uNonterm x3)
-  then show ?thesis by auto
-next
-  case (uNot x4)
-  then show ?thesis by auto
-next
-  case (uSeq x51 x52)
-  then show ?thesis by auto
-next
-  case (uChoice x61 x62)
-  then show ?thesis by auto
-next
-  case (uBind x71 x72)
-  then show ?thesis by auto
-next
-  case (Lookup x8)
-  then show ?thesis by auto
+  show ?case by auto
+  next
+    case (uTerm x2)
+    show ?case by auto
+  next
+    case (uNonterm x3)
+    show ?case by auto
+  next
+    case (uNot x4)
+    assume ih: "size (stripUpdate x4) < Suc (size x4)"
+    show ?case using ih by auto
+  next
+    case (uSeq x51 x52)
+    assume ih1: "size (stripUpdate x51) < Suc (size x51)"
+    assume ih2: "size (stripUpdate x52) < Suc (size x52)"
+    show ?case using ih1 ih2 by auto
+  next
+    case (uChoice x61 x62)
+    assume ih1: "size (stripUpdate x61) < Suc (size x61)"
+    assume ih2: "size (stripUpdate x62) < Suc (size x62)"
+    show ?case using ih1 ih2 by auto
+  next
+    case (uBind x71 x72)
+    assume ih: "size (stripUpdate x71) < Suc (size x71)"
+    show ?case using ih by auto
+  next
+    case (Lookup x8)
+    show ?case by auto
 qed
 
-fun getSubExpressions :: "expr \<Rightarrow> expr list" where
+function (sequential) getSubExpressions :: "expr \<Rightarrow> expr list" where
   "getSubExpressions Empty = Nil " |
   "getSubExpressions (Nonterm _) = Nil" |
   "getSubExpressions (Term _) = Nil" |
-(*"getSubExpressions (Star e) = [e] @ getSubExpressions e" | *)
+  (*"getSubExpressions (Star e) = [e] @ getSubExpressions e" | *)
   "getSubExpressions (Not e) = [e] @ getSubExpressions e" |
   "getSubExpressions (Seq e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
   "getSubExpressions (Choice e1 e2) = [e1, e2] @ getSubExpressions e1 @ getSubExpressions e2" |
   "getSubExpressions (Mut _ u) = getSubExpressions (stripUpdate u)" |
   "getSubExpressions (Bind e _) = [e] @ getSubExpressions e"
+  by pat_completeness auto
 
 fun expressionSet :: "EPEG \<Rightarrow> expr set" where
   "expressionSet \<Gamma> = set (List.bind (map snd (production \<Gamma>)) getSubExpressions)"
@@ -105,28 +112,28 @@ fun lookup :: "EPEG \<Rightarrow> nonterm \<Rightarrow> expr" where
       | Some p \<Rightarrow> snd p)"
 
 inductive
-  elim :: "EPEG \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> bool" and
-  elimUpdate :: "EPEG \<Rightarrow> updateExpr \<Rightarrow> updateExpr \<Rightarrow> bool"
+  elim :: "EPEG \<Rightarrow> updateExpr \<Rightarrow> expr \<Rightarrow> bool" (* and *)
+  (* elimUpdate :: "EPEG \<Rightarrow> updateExpr \<Rightarrow> updateExpr \<Rightarrow> bool" *)
 where
-  Empty: "elim \<Gamma> Empty Empty" |
-  Term: "elim \<Gamma> (Term a) (Term a)" |
-  Nonterm: "elim \<Gamma> (Nonterm A) (Nonterm A)" |
-  Seq: "elim \<Gamma> e1 e1' \<Longrightarrow> elim \<Gamma> e2 e2' \<Longrightarrow> elim \<Gamma> (Seq e1 e2) (Seq e1' e2')" |
-  Choice: "elim \<Gamma> e1 e1' \<Longrightarrow> elim \<Gamma> e2 e2' \<Longrightarrow> elim \<Gamma> (Choice e1 e2) (Choice e1' e2')" |
-  Not: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Not e) (Not e')" |
-(*Star: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Star e) (Star e')" |*)
-  Bind: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Bind e A) (Bind e' A)" |
-  Mut : "elimUpdate \<Gamma> P P' \<Longrightarrow> elim \<Gamma> (Mu P) (Mu P')" |
+  Empty: "elim \<Gamma> uEmpty Empty" |
+  Term: "elim \<Gamma> (uTerm a) (Term a)" |
+  Nonterm: "elim \<Gamma> (uNonterm A) (Nonterm A)" |
+  Seq: "elim \<Gamma> e1 e1' \<Longrightarrow> elim \<Gamma> e2 e2' \<Longrightarrow> elim \<Gamma> (uSeq e1 e2) (Seq e1' e2')" |
+  Choice: "elim \<Gamma> e1 e1' \<Longrightarrow> elim \<Gamma> e2 e2' \<Longrightarrow> elim \<Gamma> (uChoice e1 e2) (Choice e1' e2')" |
+  Not: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (uNot e) (Not e')" |
+  (*Star: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (Star e) (Star e')" |*)
+  Bind: "elim \<Gamma> e e' \<Longrightarrow> elim \<Gamma> (uBind e A) (Bind e' A)" |
+  (*Mut : "elimUpdate \<Gamma> P P' \<Longrightarrow> elim \<Gamma> (Mut nt P) (Mut nt P')" |*)
 
-  updateExpr : "elim \<Gamma> e e'\<Longrightarrow> elimUpdate \<Gamma> (Expr e) (Expr e')" |
-  updateLookup : "lookup \<Gamma> n = e \<Longrightarrow> elimUpdate \<Gamma> (Lookup n) (Expr e)"
-(*Elim2: "lookup \<Gamma> n = nontermToExpr A \<Longrightarrow> elim \<Gamma> (Nu n) (Nonterm A)" |*) (* nu case *)
+  (*updateExpr : "elim \<Gamma> e e' \<Longrightarrow> elimUpdate \<Gamma> (Expr e) (Expr e')" |*)
+  Lookup : "lookup \<Gamma> n = e \<Longrightarrow> elim \<Gamma> (Lookup n) e"
+  (*Elim2: "lookup \<Gamma> n = nontermToExpr A \<Longrightarrow> elim \<Gamma> (Nu n) (Nonterm A)" |*) (* nu case *)
 
 code_pred elim.
-code_pred elimUpdate.
+(*code_pred elimUpdate.*)
 
 (* no equations error - seems like code_pred doesn't work anymore *)
-value "elim \<lparr> production = Nil, table = Nil, scope = Nil \<rparr> (Term (CHR ''a'')) (Term (CHR ''b''))"
+value "elim \<lparr> production = Nil, table = Nil, scope = Nil \<rparr> (uTerm (CHR ''a'')) (Term (CHR ''b''))"
 
 datatype outcome =
   Succ0 |
@@ -141,8 +148,8 @@ where
   Term_Succ1: "hook \<Gamma> (Term a) Succ1" |
   Term_f: "hook \<Gamma> (Term a) Fail" |
   Nonterm: "lookup \<Gamma> nt = e \<Longrightarrow> hook \<Gamma> e out \<Longrightarrow> hook \<Gamma> (Nonterm nt) out" |
-(*Star_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Star e) Succ0" | *)
-(*Star_1: "hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Star e) Succ1" | *)
+  (*Star_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Star e) Succ0" | *)
+  (*Star_1: "hook \<Gamma> e Succ1 \<Longrightarrow> hook \<Gamma> (Star e) Succ1" | *)
   Not_0: "hook \<Gamma> e Fail \<Longrightarrow> hook \<Gamma> (Not e) Succ0" |
   Not_f: "succeeds \<Gamma> e \<Longrightarrow> hook \<Gamma> (Not e) Fail" |
   Seq_0: "hook \<Gamma> e1 Succ0 \<Longrightarrow> hook \<Gamma> e2 Succ0 \<Longrightarrow> hook \<Gamma> (Seq e1 e2) Succ0" |
@@ -211,203 +218,203 @@ lemma hook_inv_elim :
   "elim \<Gamma> e e' \<Longrightarrow> (\<forall> out. hook \<Gamma> e out \<longleftrightarrow> hook \<Gamma> e' out)"
 proof
   (induction rule: elim_elimUpdate.inducts(1))
-  case Empty
-  show ?case by auto
-next
-  case Term
-  show ?case by auto
-next
-  case Nonterm
-  show ?case by auto
-next
-  case (Seq \<Gamma> e1 e1' e2 e2')
-  assume ih1: "elim \<Gamma> e1 e1'"
-  assume ih2: "elim \<Gamma> e2 e2'"
-  assume r1: "restricted (Seq e1 e2)"
-  from r1 have aux1: "restricted e1" using restricted.cases by auto
-  from r1 have aux2: "restricted e2" using restricted.cases by auto
-  assume r2: "restricted (Seq e1' e2')"
-  from r2 have aux1': "restricted e1'" using restricted.cases by auto
-  from r2 have aux2': "restricted e2'" using restricted.cases by auto
-  assume "restricted e1 \<Longrightarrow> restricted e1' \<Longrightarrow> \<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out"
-  then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using aux1 aux1' by blast
-  assume "restricted e2 \<Longrightarrow> restricted e2' \<Longrightarrow> \<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out"
-  then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using aux2 aux2' by blast
-  show ?case
-  proof
-    fix out
-    show "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out"
-    proof (cases out)
-      assume "out = Succ0"
-      thus "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out" using Seq_0 ih3 ih4 by blast
-    next
-      assume h: "out = Succ1"
+    case Empty
+    show ?case by auto
+  next
+    case Term
+    show ?case by auto
+  next
+    case Nonterm
+    show ?case by auto
+  next
+    case (Seq \<Gamma> e1 e1' e2 e2')
+    assume ih1: "elim \<Gamma> e1 e1'"
+    assume ih2: "elim \<Gamma> e2 e2'"
+    assume r1: "restricted (Seq e1 e2)"
+    from r1 have aux1: "restricted e1" using restricted.cases by auto
+    from r1 have aux2: "restricted e2" using restricted.cases by auto
+    assume r2: "restricted (Seq e1' e2')"
+    from r2 have aux1': "restricted e1'" using restricted.cases by auto
+    from r2 have aux2': "restricted e2'" using restricted.cases by auto
+    assume "restricted e1 \<Longrightarrow> restricted e1' \<Longrightarrow> \<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out"
+    then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using aux1 aux1' by blast
+    assume "restricted e2 \<Longrightarrow> restricted e2' \<Longrightarrow> \<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out"
+    then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using aux2 aux2' by blast
+    show ?case
+    proof
+      fix out
       show "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out"
-      proof
-        assume k: "hook \<Gamma> (Seq e1 e2) out"
-        from h k have "(hook \<Gamma> e1 Succ1 \<and> succeeds \<Gamma> e2) \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Succ1)" by blast
-        then have "(hook \<Gamma> e1' Succ1 \<and> succeeds \<Gamma> e2') \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Succ1)" using ih3 ih4 succeeds.simps by auto
-        thus "hook \<Gamma> (Seq e1' e2') out" by (metis Seq_1_first Seq_1_second h)
+      proof (cases out)
+        assume "out = Succ0"
+        thus "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out" using Seq_0 ih3 ih4 by blast
       next
-        assume k: "hook \<Gamma> (Seq e1' e2') out"
-        from h k have "(hook \<Gamma> e1' Succ1 \<and> succeeds \<Gamma> e2') \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Succ1)" by blast
-        then have "(hook \<Gamma> e1 Succ1 \<and> succeeds \<Gamma> e2) \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Succ1)" using ih3 ih4 succeeds.simps by auto
-        thus "hook \<Gamma> (Seq e1 e2) out" by (metis Seq_1_first Seq_1_second h)
-      qed
-    next
-      assume h: "out = Fail"
-      show "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out"
-      proof
-        assume k: "hook \<Gamma> (Seq e1 e2) out"
-        from h k have "hook \<Gamma> e1 Fail \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Fail)" by blast
-        then have "hook \<Gamma> e1' Fail \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Fail)" using ih3 ih4 succeeds.simps by auto
-        thus "hook \<Gamma> (Seq e1' e2') out" by (metis Seq_f_first Seq_f_second h)
+        assume h: "out = Succ1"
+        show "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out"
+        proof
+          assume k: "hook \<Gamma> (Seq e1 e2) out"
+          from h k have "(hook \<Gamma> e1 Succ1 \<and> succeeds \<Gamma> e2) \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Succ1)" by blast
+          then have "(hook \<Gamma> e1' Succ1 \<and> succeeds \<Gamma> e2') \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Succ1)" using ih3 ih4 succeeds.simps by auto
+          thus "hook \<Gamma> (Seq e1' e2') out" by (metis Seq_1_first Seq_1_second h)
+        next
+          assume k: "hook \<Gamma> (Seq e1' e2') out"
+          from h k have "(hook \<Gamma> e1' Succ1 \<and> succeeds \<Gamma> e2') \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Succ1)" by blast
+          then have "(hook \<Gamma> e1 Succ1 \<and> succeeds \<Gamma> e2) \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Succ1)" using ih3 ih4 succeeds.simps by auto
+          thus "hook \<Gamma> (Seq e1 e2) out" by (metis Seq_1_first Seq_1_second h)
+        qed
       next
-        assume k: "hook \<Gamma> (Seq e1' e2') out"
-        from h k have "hook \<Gamma> e1' Fail \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Fail)" by blast
-        then have "hook \<Gamma> e1 Fail \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Fail)" using ih3 ih4 succeeds.simps by auto
-        thus "hook \<Gamma> (Seq e1 e2) out" by (metis Seq_f_first Seq_f_second h)
+        assume h: "out = Fail"
+        show "hook \<Gamma> (Seq e1 e2) out = hook \<Gamma> (Seq e1' e2') out"
+        proof
+          assume k: "hook \<Gamma> (Seq e1 e2) out"
+          from h k have "hook \<Gamma> e1 Fail \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Fail)" by blast
+          then have "hook \<Gamma> e1' Fail \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Fail)" using ih3 ih4 succeeds.simps by auto
+          thus "hook \<Gamma> (Seq e1' e2') out" by (metis Seq_f_first Seq_f_second h)
+        next
+          assume k: "hook \<Gamma> (Seq e1' e2') out"
+          from h k have "hook \<Gamma> e1' Fail \<or> (succeeds \<Gamma> e1' \<and> hook \<Gamma> e2' Fail)" by blast
+          then have "hook \<Gamma> e1 Fail \<or> (succeeds \<Gamma> e1 \<and> hook \<Gamma> e2 Fail)" using ih3 ih4 succeeds.simps by auto
+          thus "hook \<Gamma> (Seq e1 e2) out" by (metis Seq_f_first Seq_f_second h)
+        qed
       qed
     qed
-  qed
-next
-  case (Choice \<Gamma> e1 e1' e2 e2')
-  assume ih1: "elim \<Gamma> e1 e1'"
-  assume ih2: "elim \<Gamma> e2 e2'"
-  assume r1: "restricted (Choice e1 e2)"
-  from r1 have aux1: "restricted e1" using restricted.cases by auto
-  from r1 have aux2: "restricted e2" using restricted.cases by auto
-  assume r2: "restricted (Choice e1' e2')"
-  from r2 have aux1': "restricted e1'" using restricted.cases by auto
-  from r2 have aux2': "restricted e2'" using restricted.cases by auto
-  assume "restricted e1 \<Longrightarrow> restricted e1' \<Longrightarrow> \<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out"
-  then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using aux1 aux1' by blast
-  assume "restricted e2 \<Longrightarrow> restricted e2' \<Longrightarrow> \<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out"
-  then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using aux2 aux2' by blast
-  show ?case
-  proof
-    fix out
-    show "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out"
-    proof (cases out)
-      assume h: "out = Succ0"
+  next
+    case (Choice \<Gamma> e1 e1' e2 e2')
+    assume ih1: "elim \<Gamma> e1 e1'"
+    assume ih2: "elim \<Gamma> e2 e2'"
+    assume r1: "restricted (Choice e1 e2)"
+    from r1 have aux1: "restricted e1" using restricted.cases by auto
+    from r1 have aux2: "restricted e2" using restricted.cases by auto
+    assume r2: "restricted (Choice e1' e2')"
+    from r2 have aux1': "restricted e1'" using restricted.cases by auto
+    from r2 have aux2': "restricted e2'" using restricted.cases by auto
+    assume "restricted e1 \<Longrightarrow> restricted e1' \<Longrightarrow> \<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out"
+    then have ih3: "\<forall>out. hook \<Gamma> e1 out = hook \<Gamma> e1' out" using aux1 aux1' by blast
+    assume "restricted e2 \<Longrightarrow> restricted e2' \<Longrightarrow> \<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out"
+    then have ih4: "\<forall>out. hook \<Gamma> e2 out = hook \<Gamma> e2' out" using aux2 aux2' by blast
+    show ?case
+    proof
+      fix out
       show "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out"
-      proof
-        assume k: "hook \<Gamma> (Choice e1 e2) out"
-        from h k ih3 ih4 have "hook \<Gamma> e1' Succ0 \<or> (hook \<Gamma> e1' Fail \<and> hook \<Gamma> e2' Succ0)" by blast
-        thus "hook \<Gamma> (Choice e1' e2') out" by (metis Choice_Succ0 Choice_second h)
+      proof (cases out)
+        assume h: "out = Succ0"
+        show "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out"
+        proof
+          assume k: "hook \<Gamma> (Choice e1 e2) out"
+          from h k ih3 ih4 have "hook \<Gamma> e1' Succ0 \<or> (hook \<Gamma> e1' Fail \<and> hook \<Gamma> e2' Succ0)" by blast
+          thus "hook \<Gamma> (Choice e1' e2') out" by (metis Choice_Succ0 Choice_second h)
+        next
+          assume k: "hook \<Gamma> (Choice e1' e2') out"
+          from h k ih3 ih4 have "hook \<Gamma> e1 Succ0 \<or> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Succ0)" by blast
+          thus "hook \<Gamma> (Choice e1 e2) out" by (metis Choice_Succ0 Choice_second h)
+        qed
       next
-        assume k: "hook \<Gamma> (Choice e1' e2') out"
-        from h k ih3 ih4 have "hook \<Gamma> e1 Succ0 \<or> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Succ0)" by blast
-        thus "hook \<Gamma> (Choice e1 e2) out" by (metis Choice_Succ0 Choice_second h)
-      qed
-    next
-      assume h: "out = Succ1"
-      show "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out"
-      proof
-        assume k: "hook \<Gamma> (Choice e1 e2) out"
-        from h k ih3 ih4 have "hook \<Gamma> e1' Succ1 \<or> (hook \<Gamma> e1' Fail \<and> hook \<Gamma> e2' Succ1)" by blast
-        thus "hook \<Gamma> (Choice e1' e2') out" by (metis Choice_Succ1 Choice_second h)
+        assume h: "out = Succ1"
+        show "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out"
+        proof
+          assume k: "hook \<Gamma> (Choice e1 e2) out"
+          from h k ih3 ih4 have "hook \<Gamma> e1' Succ1 \<or> (hook \<Gamma> e1' Fail \<and> hook \<Gamma> e2' Succ1)" by blast
+          thus "hook \<Gamma> (Choice e1' e2') out" by (metis Choice_Succ1 Choice_second h)
+        next
+          assume k: "hook \<Gamma> (Choice e1' e2') out"
+          from h k ih3 ih4 have "hook \<Gamma> e1 Succ1 \<or> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Succ1)" by blast
+          thus "hook \<Gamma> (Choice e1 e2) out" by (metis Choice_Succ1 Choice_second h)
+        qed
       next
-        assume k: "hook \<Gamma> (Choice e1' e2') out"
-        from h k ih3 ih4 have "hook \<Gamma> e1 Succ1 \<or> (hook \<Gamma> e1 Fail \<and> hook \<Gamma> e2 Succ1)" by blast
-        thus "hook \<Gamma> (Choice e1 e2) out" by (metis Choice_Succ1 Choice_second h)
+        assume h: "out = Fail"
+        thus "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out" using Choice_second ih3 ih4 by blast
       qed
-    next
-      assume h: "out = Fail"
-      thus "hook \<Gamma> (Choice e1 e2) out = hook \<Gamma> (Choice e1' e2') out" using Choice_second ih3 ih4 by blast
     qed
-  qed
-next
-  case (Not \<Gamma> e e')
-  assume ih1: "elim \<Gamma> e e'"
-  assume "restricted (Not e)"
-  then have aux: "restricted e" using restricted.cases by auto
-  assume "restricted (Not e')"
-  then have aux': "restricted e'" using restricted.cases by auto
-  assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
-  show ?case
-  proof
-    fix out
-    show "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out"
-    proof (cases out)
-      assume h: "out = Succ0"
-      thus "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out" using Not_0 ih2 by auto
-    next
-      assume h: "out = Succ1"
-      thus "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out" by auto
-    next
-      assume h: "out = Fail"
-      thus "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out" using Not_f ih2 succeeds.simps by auto
+  next
+    case (Not \<Gamma> e e')
+    assume ih1: "elim \<Gamma> e e'"
+    assume "restricted (Not e)"
+    then have aux: "restricted e" using restricted.cases by auto
+    assume "restricted (Not e')"
+    then have aux': "restricted e'" using restricted.cases by auto
+    assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
+    then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
+    show ?case
+    proof
+      fix out
+      show "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out"
+      proof (cases out)
+        assume h: "out = Succ0"
+        thus "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out" using Not_0 ih2 by auto
+      next
+        assume h: "out = Succ1"
+        thus "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out" by auto
+      next
+        assume h: "out = Fail"
+        thus "hook \<Gamma> (expr.Not e) out = hook \<Gamma> (expr.Not e') out" using Not_f ih2 succeeds.simps by auto
+      qed
     qed
-  qed
-next
-  case (Star \<Gamma> e e')
-  assume ih1: "elim \<Gamma> e e'"
-  assume "restricted (Star e)"
-  then have aux: "restricted e" using restricted.cases by auto
-  assume "restricted (Star e')"
-  then have aux': "restricted e'" using restricted.cases by auto
-  assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
-  show ?case
-  proof
-    fix out
-    show "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out"
-    proof (cases out)
-      assume "out = Succ0"
-      thus "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out" using Star_0 ih2 by auto
-    next
-      assume "out = Succ1"
-      thus "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out" using Star_1 ih2 by auto
-    next
-      assume "out = Fail"
-      thus "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out" by auto
+  next
+    case (Star \<Gamma> e e')
+    assume ih1: "elim \<Gamma> e e'"
+    assume "restricted (Star e)"
+    then have aux: "restricted e" using restricted.cases by auto
+    assume "restricted (Star e')"
+    then have aux': "restricted e'" using restricted.cases by auto
+    assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
+    then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
+    show ?case
+    proof
+      fix out
+      show "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out"
+      proof (cases out)
+        assume "out = Succ0"
+        thus "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out" using Star_0 ih2 by auto
+      next
+        assume "out = Succ1"
+        thus "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out" using Star_1 ih2 by auto
+      next
+        assume "out = Fail"
+        thus "hook \<Gamma> (expr.Star e) out = hook \<Gamma> (expr.Star e') out" by auto
+      qed
     qed
-  qed
-next
-  case (Delta \<Gamma> e e' A)
-  assume ih1: "elim \<Gamma> e e'"
-  assume "restricted (Delta e A)"
-  then have aux: "restricted e" using restricted.cases by auto
-  assume "restricted (Delta e' A)"
-  then have aux': "restricted e'" using restricted.cases by auto
-  assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
-  show ?case
-  proof
-    fix out
-    show "hook \<Gamma> (Delta e A) out = hook \<Gamma> (Delta e' A) out" using Bind_main ih2 by auto
-  qed
-next
-  case (Elim1 \<Gamma> n e)
-  assume "restricted (Gamma n)"
-  thus ?case using restricted.cases by auto
-next
-  case (Elim2 \<Gamma> n A)
-  assume "restricted (Nu n)"
-  thus ?case using restricted.cases by auto
-next
-  case (Mut_Nil \<Gamma> e e')
-  assume ih1: "elim \<Gamma> e e'"
-  assume "restricted (Mu e [])"
-  then have aux: "restricted e" using restricted.cases by auto
-  assume "restricted (Mu e' [])"
-  then have aux': "restricted e'" using restricted.cases by auto
-  assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
-  then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
-  show ?case using Mut_main ih2 by auto
-next
-  case (Mut_Cons \<Gamma> ni ni' ei ei' e P e' P')
-  assume "restricted (Mu e ((ni, ei) # P))"
-  then have "restricted e" using restricted.cases by auto
-  then have ih1: "restricted (Mu e P)" using restricted.Mu by auto
-  assume "restricted (Mu e' ((ni', ei') # P'))"
-  then have "restricted e'" using restricted.cases by auto
-  then have ih2: "restricted (Mu e' P')" using restricted.Mu by auto
-  assume "restricted (Mu e P) \<Longrightarrow> restricted (Mu e' P') \<Longrightarrow> \<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out"
-  then have ih3: "\<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out" using ih1 ih2 by auto
-  show ?case by (meson MutE Mut_main ih3)
+  next
+    case (Delta \<Gamma> e e' A)
+    assume ih1: "elim \<Gamma> e e'"
+    assume "restricted (Delta e A)"
+    then have aux: "restricted e" using restricted.cases by auto
+    assume "restricted (Delta e' A)"
+    then have aux': "restricted e'" using restricted.cases by auto
+    assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
+    then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
+    show ?case
+    proof
+      fix out
+      show "hook \<Gamma> (Delta e A) out = hook \<Gamma> (Delta e' A) out" using Bind_main ih2 by auto
+    qed
+  next
+    case (Elim1 \<Gamma> n e)
+    assume "restricted (Gamma n)"
+    thus ?case using restricted.cases by auto
+  next
+    case (Elim2 \<Gamma> n A)
+    assume "restricted (Nu n)"
+    thus ?case using restricted.cases by auto
+  next
+    case (Mut_Nil \<Gamma> e e')
+    assume ih1: "elim \<Gamma> e e'"
+    assume "restricted (Mu e [])"
+    then have aux: "restricted e" using restricted.cases by auto
+    assume "restricted (Mu e' [])"
+    then have aux': "restricted e'" using restricted.cases by auto
+    assume "restricted e \<Longrightarrow> restricted e' \<Longrightarrow> \<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out"
+    then have ih2: "\<forall>out. hook \<Gamma> e out = hook \<Gamma> e' out" using aux aux' by blast
+    show ?case using Mut_main ih2 by auto
+  next
+    case (Mut_Cons \<Gamma> ni ni' ei ei' e P e' P')
+    assume "restricted (Mu e ((ni, ei) # P))"
+    then have "restricted e" using restricted.cases by auto
+    then have ih1: "restricted (Mu e P)" using restricted.Mu by auto
+    assume "restricted (Mu e' ((ni', ei') # P'))"
+    then have "restricted e'" using restricted.cases by auto
+    then have ih2: "restricted (Mu e' P')" using restricted.Mu by auto
+    assume "restricted (Mu e P) \<Longrightarrow> restricted (Mu e' P') \<Longrightarrow> \<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out"
+    then have ih3: "\<forall>out. hook \<Gamma> (Mu e P) out = hook \<Gamma> (Mu e' P') out" using ih1 ih2 by auto
+    show ?case by (meson MutE Mut_main ih3)
 qed
 
 inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow> string option \<Rightarrow> (nonterm \<times> expr) list \<Rightarrow> bool" where
