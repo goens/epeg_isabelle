@@ -451,9 +451,6 @@ inductive step :: "expr \<Rightarrow> char list \<Rightarrow> EPEG \<Rightarrow>
 
 code_pred step.
 
-(* something has gone wrong with code_pred *)
-value "step (Term (CHR ''a'')) ((CHR ''a'') # [CHR ''b'']) \<lparr> production = [], table = Nil, scope = Nil \<rparr> (Some ''a'') []"
-
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
       assumes "restricted e"
