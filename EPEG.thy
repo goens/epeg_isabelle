@@ -2,7 +2,6 @@ theory EPEG
   imports Main
 begin
 type_synonym nonterm = string
-type_synonym identifier = string
 type_synonym symbol = "char list"
 type_synonym name = "string list"
 
@@ -453,79 +452,28 @@ code_pred step.
 
 (* Lemma 5.8 *)
 lemma assumes hStep : "step e i \<Gamma> res R"
-      assumes "restricted e"
-      assumes "restricted e'"
       shows "hook \<Gamma> e' out \<longleftrightarrow> hook (\<Gamma> \<lparr> production := R\<rparr>) e' out"
       (*induction on the proof witness hStep *)
-      defer
       using hStep
       apply(induct rule: step.induct)
-      apply(auto)
-      proof -
+      apply(simp_all) (* prove all cases with immutable \<Gamma> *)
+    proof
+      (* Bind_s forward case *)
       fix e x y \<Gamma> R i
       assume "step e (x @ y) \<Gamma> (Some x) R"
-      assume hhook : "hook \<Gamma> e' out"
-      assume "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
-      show "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
-        proof (cases e')
-        case hempty : Empty
-        hence  hout : "out = Succ0" using hhook  by blast
-        thus ?thesis using hout hempty by (simp add: hook_succeeds.Empty)
-        next case (Term)
-        from this show ?thesis
-          using Term_Succ1 Term_f hhook by blast
-        next case (Nonterm)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Star)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Not)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Seq)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Choice)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Mu)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Delta)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Nu)
-        from this show ?thesis
-          sorry (*...*)
-        next case (Gamma)
-        from this show ?thesis
-          sorry (*...*)
-        qed
-      next
+      assume ih : "hook \<Gamma> e' out = hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      assume h : "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      show "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out" sorry
+    next
+      (* Bind_s backward case *)
       fix e x y \<Gamma> R i
       assume "step e (x @ y) \<Gamma> (Some x) R"
-      assume "\<not> hook \<Gamma> e' out"
-      assume "\<not> hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
-      assume "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
-      show "False"
-        sorry
-      next
-      fix e x y \<Gamma> R ei ei' n
-      assume "step e (x @ y) \<Gamma> (Some x) R"
-      assume "elim \<Gamma> ei ei'"
-      assume "hook \<Gamma> e' out"
-      assume "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
-      show "hook (\<Gamma>\<lparr>production := (n, ei') # R\<rparr>) e' out"
-        sorry
-      next
-      fix e x y \<Gamma> R ei ei' n
-      assume "step e (x @ y) \<Gamma> (Some x) R"
-      assume "elim \<Gamma> ei ei'"
-      assume "\<not> hook \<Gamma> e' out"
-      assume "\<not> hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
-      assume "hook (\<Gamma>\<lparr>production := (n, ei') # R\<rparr>) e' out"
-      show "False"
-        sorry
-      qed
+      assume ih : "hook \<Gamma> e' out = hook (\<Gamma>\<lparr>production := R\<rparr>) e' out"
+      assume h : "hook (\<Gamma>\<lparr>production := (i, foldr (\<lambda>c. Seq (Term c)) x Empty) # R\<rparr>) e' out"
+      have "hook \<Gamma> e' out" sorry
+      thus "hook (\<Gamma>\<lparr>production := R\<rparr>) e' out" by (simp add: ih)
+    next
+      (* Mod case *)
+      show "\<And>\<Gamma> e e'a nt. elim \<Gamma> e e'a \<Longrightarrow> hook \<Gamma> e' out = hook (\<Gamma>\<lparr>production := (nt, e'a) # filter (\<lambda>p. fst p \<noteq> nt) (production \<Gamma>)\<rparr>) e' out" sorry
+    qed
 end
